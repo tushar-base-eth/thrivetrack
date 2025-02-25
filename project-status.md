@@ -113,6 +113,143 @@ ThriveTrack is a simple, intuitive fitness tracking web application designed to 
 4. Implement form validations with Zod
 5. Add proper error handling and loading states
 
+### Step 2: Authentication (In Progress)
+
+#### Understanding & Approach
+
+1. **Authentication Requirements**
+   - Email/password authentication with industry-standard password requirements
+     - Minimum 8 characters
+     - At least one uppercase letter
+     - At least one lowercase letter
+     - At least one number
+     - At least one special character
+   - Google OAuth integration only (keeping MVP focused)
+   - Mandatory email verification
+   - Single active session per user
+   - IP-based rate limiting for enhanced security
+
+2. **Implementation Components**
+   - Supabase Auth configuration in dashboard
+   - Client-side authentication components
+   - Server-side session validation
+   - Protected route middleware
+   - Type-safe auth hooks and contexts
+
+3. **User Flow**
+   - Sign up with email/password or Google
+   - Mandatory email verification (24-hour link expiry)
+   - Sign in with verified credentials
+   - Password reset functionality (24-hour link expiry)
+   - Session management (7-day expiry)
+   - Sign out handling
+
+#### Implementation Steps
+
+1. [ ] Configure Supabase Auth in Dashboard
+   - Enable email/password provider with password requirements
+   - Set up Google OAuth with provided client ID and secret
+   - Configure email templates for verification and reset
+   - Enable mandatory email verification
+   - Configure session settings (7-day expiry, single session)
+   - Set up rate limiting rules
+
+2. [ ] Create Authentication Components
+   - Sign up form with password validation
+   - Sign in form with rate limit handling
+   - Google OAuth button
+   - Password reset request form
+   - Email verification notice
+   - Loading and error states
+
+3. [ ] Implement Server-side Auth
+   - Session validation middleware
+   - Protected API routes
+   - Server-side redirect logic
+   - Rate limiting implementation
+
+4. [ ] Set up Client Auth Context
+   - User session state
+   - Authentication methods
+   - Loading states
+   - Error handling
+
+5. [ ] Add Protected Routes
+   - Dashboard protection
+   - Settings page protection
+   - History page protection
+   - API route protection
+
+6. [ ] Create Auth Hooks
+   - useAuth hook for session access
+   - useProtectedRoute for client-side protection
+   - useSignIn for authentication
+   - useSignUp for registration
+   - useSignOut for logout
+
+#### Key Decisions & Rationale
+
+1. **Authentication Providers**
+   - ✅ Google OAuth only
+     - Rationale: Most common provider, reduces complexity for MVP
+     - Already have client ID and secret ready
+   - ❌ Other providers deferred
+     - Can be added based on user demand post-MVP
+
+2. **Security Settings**
+   - ✅ Mandatory email verification
+     - Ensures valid user emails
+     - Reduces spam accounts
+   - ✅ 24-hour verification link expiry
+     - Industry standard
+     - Balances security with user convenience
+   - ✅ IP-based rate limiting
+     - Prevents brute force attacks
+     - Limits API abuse
+   - ✅ Single active session
+     - Simpler session management
+     - Better security control
+   - ❌ Remember Me functionality
+     - Not needed for MVP
+     - 7-day session provides good balance
+   - ❌ Password history
+     - Unnecessary complexity for MVP
+   - ❓ Optional 2FA
+     - Will implement as optional feature
+     - Users can enable if desired
+
+3. **Session Management**
+   - 7-day session expiry
+     - Industry standard for web applications
+     - Good balance between security and convenience
+   - Automatic session invalidation on password change
+   - Clear session handling on sign out
+
+4. **Rate Limiting Rules**
+   - Sign in: 5 attempts per IP per 15 minutes
+   - Password reset: 3 attempts per email per hour
+   - Email verification resend: 3 attempts per email per hour
+   - API endpoints: 100 requests per IP per minute
+
+#### Implementation Priorities
+1. Basic email/password authentication
+2. Google OAuth integration
+3. Email verification flow
+4. Session management
+5. Rate limiting
+6. Optional 2FA
+
+#### Questions Resolved
+- ✅ OAuth Providers: Google only
+- ✅ Email Verification: Mandatory with 24h expiry
+- ✅ Session Duration: 7 days
+- ✅ Multiple Sessions: Not allowed
+- ✅ Rate Limiting: Implemented
+- ✅ Password Requirements: Industry standard
+- ✅ Remember Me: Not needed
+- ✅ Password History: Not needed
+- ✅ 2FA: Optional feature
+
 ## Tech Stack
 
 ### Frontend
