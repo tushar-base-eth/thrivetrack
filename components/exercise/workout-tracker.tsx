@@ -14,13 +14,31 @@ import { ExerciseSelector } from "./exercise-selector"
 import { SetEditor } from "./set-editor"
 import { WorkoutWelcome } from "./workout-welcome"
 import { ExerciseSkeleton } from "@/components/loading/exercise-skeleton"
-import type { WorkoutExercise, Exercise, Set } from "@/types/exercises"
-import type { Workout } from "@/types/workouts"
+import type { WorkoutSet } from "@/types/workouts"
+import type { Database } from "@/types/supabase"
 import { supabase } from "@/utils/supabase/client"
 
+// Create a simplified version of WorkoutExercise for local use in this component
+export type LocalExercise = {
+  id?: string // Optional ID for local management
+  exercise_id?: string
+  name: string
+  sets: {
+    id?: string
+    reps: number
+    weight_kg: number
+  }[]
+  exercise?: {
+    id: string
+    name: string
+    category?: string
+    description?: string
+  }
+}
+
 export function WorkoutTracker() {
-  const [exercises, setExercises] = useState<WorkoutExercise[]>([])
-  const [selectedExercise, setSelectedExercise] = useState<WorkoutExercise | null>(null)
+  const [exercises, setExercises] = useState<LocalExercise[]>([])
+  const [selectedExercise, setSelectedExercise] = useState<LocalExercise | null>(null)
   const [showExerciseModal, setShowExerciseModal] = useState(false)
   const [isPending, startTransition] = useTransition()
   const [isSaving, setIsSaving] = useState(false)
@@ -34,7 +52,7 @@ export function WorkoutTracker() {
         exercise.sets.every((set) => set.reps > 0 && set.weight_kg > 0)
     )
 
-  const handleUpdateSets = (exerciseIndex: number, newSets: Set[]) => {
+  const handleUpdateSets = (exerciseIndex: number, newSets: LocalExercise['sets']) => {
     if (exerciseIndex === -1) return
     const updatedExercises = [...exercises]
     updatedExercises[exerciseIndex] = { ...exercises[exerciseIndex], sets: newSets }
@@ -46,7 +64,7 @@ export function WorkoutTracker() {
     }
   }
 
-  const handleExerciseSelect = (exercise: WorkoutExercise) => {
+  const handleExerciseSelect = (exercise: LocalExercise) => {
     // Find the full exercise data from our exercises array
     const existingExercise = exercises.find(ex => ex.id === exercise.id)
     if (existingExercise) {
@@ -61,40 +79,46 @@ export function WorkoutTracker() {
   }
 
   const handleSaveWorkout = async () => {
-    if (!isWorkoutValid) return
-
     setIsSaving(true)
-    const now = new Date()
-    
-    const workout: Omit<Workout, "id"> = {
-      created_at: now.toISOString(),
-      exercises: exercises.map(({ exercise, sets }) => ({
-        name: exercise.name,
-        sets: sets.map(set => ({
+
+    // Create workout object with current data
+    const workout = {
+      exercises: exercises.map(exercise => ({
+        name: exercise.exercise?.name || exercise.name,
+        sets: exercise.sets.map(set => ({
           reps: set.reps,
-          weight: set.weight_kg,
-        })),
+          weight_kg: set.weight_kg,
+        }))
       })),
+      created_at: new Date().toISOString(),
       totalVolume: exercises.reduce(
-        (total, { sets }) =>
+        (total, exercise) =>
           total +
-          sets.reduce((setTotal, set) => setTotal + set.weight_kg * set.reps, 0),
+          exercise.sets.reduce((setTotal, set) => setTotal + set.weight_kg * set.reps, 0),
         0
       ),
     }
 
     try {
-      // Log auth state before making request
+      // Check session exists
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('Client auth status:', {
-        hasSession: !!session,
-        userId: session?.user?.id
-      })
+      
+      if (!session) {
+        toast({
+          title: "Authentication Error",
+          description: "You are not logged in. Please sign in to save workouts.",
+          variant: "destructive"
+        })
+        setIsSaving(false)
+        window.location.href = '/auth'
+        return
+      }
 
       const response = await fetch("/api/v1/workouts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
         },
         credentials: "include",
         body: JSON.stringify(workout),
@@ -132,11 +156,13 @@ export function WorkoutTracker() {
       {isPending ? (
         <ExerciseSkeleton />
       ) : (
-        <ExerciseList
-          exercises={exercises}
-          onExerciseSelect={handleExerciseSelect}
-          onExerciseRemove={handleRemoveExercise}
-        />
+        <div className="flex flex-col gap-4 w-full">
+          <ExerciseList
+            exercises={exercises}
+            onExerciseSelect={handleExerciseSelect}
+            onRemoveExercise={handleRemoveExercise}
+          />
+        </div>
       )}
 
       {/* Action Buttons */}
@@ -181,10 +207,17 @@ export function WorkoutTracker() {
         onOpenChange={setShowExerciseModal}
         onAddExercises={(selectedExerciseData) => {
           startTransition(() => {
-            const newExercises = selectedExerciseData.map((exercise) => ({
+            const newExercises: LocalExercise[] = selectedExerciseData.map((exercise) => ({
               id: exercise.id,
-              exercise,
+              exercise_id: exercise.id,
+              name: exercise.name,
               sets: [{ weight_kg: 0, reps: 0 }],
+              exercise: {
+                id: exercise.id,
+                name: exercise.name,
+                category: exercise.primary_muscle_group,
+                description: exercise.description
+              },
             }))
 
             setExercises([...exercises, ...newExercises])

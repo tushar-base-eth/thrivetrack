@@ -3,6 +3,7 @@ export interface Exercise {
   name: string
   primary_muscle_group: string
   secondary_muscle_group?: string
+  description?: string
 }
 
 export interface Set {
@@ -14,4 +15,3 @@ export interface WorkoutExercise {
   exercise: Exercise
   sets: Set[]
 }
-

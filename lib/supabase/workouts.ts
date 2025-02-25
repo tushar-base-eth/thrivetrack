@@ -2,8 +2,23 @@ import { supabase } from "@/utils/supabase/client"
 import type { WorkoutSet, WorkoutExercise, Workout } from "@/types/workouts"
 import type { Database } from "@/types/supabase"
 
+// Define a simpler interface for workout data that doesn't require
+// all the database fields since the stored procedure will handle that
+interface SimplifiedWorkout {
+  user_id: string
+  created_at: string
+  totalVolume: number
+  exercises: {
+    name: string
+    sets: {
+      reps: number
+      weight_kg: number
+    }[]
+  }[]
+}
+
 interface SaveWorkoutOptions {
-  workout: Omit<Workout, "id">
+  workout: SimplifiedWorkout
   userId: string
 }
 
@@ -43,7 +58,7 @@ export async function saveWorkout({ workout, userId }: SaveWorkoutOptions) {
         name: exercise.name,
         sets: exercise.sets.map(set => ({
           reps: set.reps,
-          weight_kg: set.weight,
+          weight_kg: set.weight_kg,
         })),
       })),
     })

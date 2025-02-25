@@ -7,7 +7,7 @@ import { saveWorkout } from "@/lib/supabase/workouts"
 // Validation schema for workout data
 const workoutSetSchema = z.object({
   reps: z.number().min(1),
-  weight: z.number().min(0),
+  weight_kg: z.number().min(0),
 })
 
 const workoutExerciseSchema = z.object({
@@ -55,8 +55,18 @@ export async function POST(request: Request) {
 
     const workout = result.data
 
+    // Create a simpler data structure that the stored procedure can handle
+    // instead of trying to match the full WorkoutExercise type
     await saveWorkout({
-      workout,
+      workout: {
+        user_id: session.user.id,
+        created_at: workout.created_at,
+        totalVolume: workout.totalVolume,
+        exercises: workout.exercises.map(exercise => ({
+          name: exercise.name,
+          sets: exercise.sets
+        }))
+      },
       userId: session.user.id,
     })
 

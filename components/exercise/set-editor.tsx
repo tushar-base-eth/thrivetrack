@@ -8,12 +8,12 @@ import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { motion, AnimatePresence } from "framer-motion"
-import type { Set, WorkoutExercise } from "@/types/exercises"
+import { LocalExercise } from './workout-tracker'
 
 interface SetEditorProps {
-  exercise: WorkoutExercise
+  exercise: LocalExercise
   onClose: () => void
-  onUpdateSets: (exerciseIndex: number, newSets: Set[]) => void
+  onUpdateSets: (exerciseIndex: number, newSets: LocalExercise['sets']) => void
   exerciseIndex: number
 }
 
@@ -46,7 +46,7 @@ export function SetEditor({ exercise, onClose, onUpdateSets, exerciseIndex }: Se
         <div className="flex flex-col h-full">
           <div className="px-6 py-4 border-b sticky top-0 bg-background/80 backdrop-blur-lg z-10">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-xl">{exercise.exercise.name}</SheetTitle>
+              <SheetTitle className="text-xl">{exercise.exercise?.name ?? exercise.name}</SheetTitle>
               <Button size="icon" variant="ghost" onClick={onClose} className="rounded-full h-8 w-8">
                 <X className="h-4 w-4" />
               </Button>
@@ -153,4 +153,3 @@ export function SetEditor({ exercise, onClose, onUpdateSets, exerciseIndex }: Se
     </Sheet>
   )
 }
-
