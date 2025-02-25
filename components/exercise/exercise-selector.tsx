@@ -15,9 +15,7 @@ import type { ExerciseGroup } from "@/lib/supabase/exercises"
 interface ExerciseSelectorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  selectedExercises: string[]
-  onExerciseToggle: (id: string) => void
-  onAddExercises: () => void
+  onAddExercises: (selectedExercises: Exercise[]) => void
 }
 
 type TabValue = "all" | "byMuscle"
@@ -25,8 +23,6 @@ type TabValue = "all" | "byMuscle"
 export function ExerciseSelector({
   open,
   onOpenChange,
-  selectedExercises,
-  onExerciseToggle,
   onAddExercises,
 }: ExerciseSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("")
@@ -34,7 +30,14 @@ export function ExerciseSelector({
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string | null>(null)
   const [exerciseGroups, setExerciseGroups] = useState<ExerciseGroup>({})
   const [exercises, setExercises] = useState<Exercise[]>([])
+  const [selectedExercises, setSelectedExercises] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedExercises([])
+    }
+  }, [open])
 
   useEffect(() => {
     async function loadExercises() {
@@ -76,6 +79,19 @@ export function ExerciseSelector({
         },
         {} as ExerciseGroup
       )
+
+  const handleExerciseToggle = (id: string) => {
+    setSelectedExercises((prev) => {
+      const newSelection = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      return newSelection
+    })
+  }
+
+  const handleAddSelected = () => {
+    const selectedExerciseData = exercises.filter(ex => selectedExercises.includes(ex.id))
+    onAddExercises(selectedExerciseData)
+    setSelectedExercises([])
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -148,7 +164,7 @@ export function ExerciseSelector({
                         >
                           <Button
                             variant={selectedExercises.includes(exercise.id) ? "default" : "outline"}
-                            onClick={() => onExerciseToggle(exercise.id)}
+                            onClick={() => handleExerciseToggle(exercise.id)}
                             className="w-full justify-start font-normal"
                           >
                             {exercise.name}
@@ -173,7 +189,7 @@ export function ExerciseSelector({
                             >
                               <Button
                                 variant={selectedExercises.includes(exercise.id) ? "default" : "outline"}
-                                onClick={() => onExerciseToggle(exercise.id)}
+                                onClick={() => handleExerciseToggle(exercise.id)}
                                 className="w-full justify-start font-normal"
                               >
                                 {exercise.name}
@@ -194,7 +210,7 @@ export function ExerciseSelector({
           </ScrollArea>
 
           <div className="px-6 py-4 border-t">
-            <Button onClick={onAddExercises} className="w-full">
+            <Button onClick={handleAddSelected} className="w-full">
               Add Selected Exercises
             </Button>
           </div>

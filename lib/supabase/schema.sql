@@ -101,6 +101,99 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to get workout volume
+CREATE OR REPLACE FUNCTION get_workout_volume(p_workout_id UUID)
+RETURNS TABLE (volume NUMERIC) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT COALESCE(SUM(s.reps * s.weight_kg), 0) as volume
+  FROM workout_exercises we
+  JOIN sets s ON s.workout_exercise_id = we.id
+  WHERE we.workout_id = p_workout_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update user stats when deleting a workout
+CREATE OR REPLACE FUNCTION update_user_stats_on_delete(p_user_id UUID, p_volume NUMERIC)
+RETURNS VOID AS $$
+BEGIN
+  -- Update user stats
+  UPDATE users
+  SET total_volume = total_volume - p_volume,
+      total_workouts = total_workouts - 1,
+      updated_at = CURRENT_TIMESTAMP
+  WHERE id = p_user_id;
+
+  -- Update daily volume
+  UPDATE daily_volume
+  SET volume = volume - p_volume
+  WHERE user_id = p_user_id
+  AND date = CURRENT_DATE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to create a workout with exercises and sets in a transaction
+CREATE OR REPLACE FUNCTION create_workout_with_exercises(
+  p_workout_id UUID,
+  p_user_id UUID,
+  p_total_volume NUMERIC,
+  p_exercises JSONB
+)
+RETURNS VOID AS $$
+DECLARE
+  exercise JSONB;
+  exercise_set JSONB;
+  exercise_id UUID;
+  workout_exercise_id UUID;
+BEGIN
+  -- Update user stats
+  UPDATE users
+  SET total_volume = total_volume + p_total_volume,
+      total_workouts = total_workouts + 1,
+      updated_at = CURRENT_TIMESTAMP
+  WHERE id = p_user_id;
+
+  -- Update or insert daily volume
+  INSERT INTO daily_volume (user_id, date, volume)
+  VALUES (p_user_id, CURRENT_DATE, p_total_volume)
+  ON CONFLICT (user_id, date)
+  DO UPDATE SET volume = daily_volume.volume + EXCLUDED.volume;
+
+  -- For each exercise in the workout
+  FOR exercise IN SELECT * FROM jsonb_array_elements(p_exercises)
+  LOOP
+    -- Get or create the exercise
+    INSERT INTO available_exercises (name, primary_muscle_group)
+    VALUES (
+      exercise->>'name',
+      COALESCE((
+        SELECT primary_muscle_group 
+        FROM available_exercises 
+        WHERE name = exercise->>'name'
+      ), 'Other')
+    )
+    ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+    RETURNING id INTO exercise_id;
+
+    -- Create workout exercise
+    INSERT INTO workout_exercises (workout_id, exercise_id)
+    VALUES (p_workout_id, exercise_id)
+    RETURNING id INTO workout_exercise_id;
+
+    -- Create sets for the exercise
+    FOR exercise_set IN SELECT * FROM jsonb_array_elements(exercise->'sets')
+    LOOP
+      INSERT INTO sets (workout_exercise_id, reps, weight_kg)
+      VALUES (
+        workout_exercise_id,
+        (exercise_set->>'reps')::INTEGER,
+        (exercise_set->>'weight_kg')::FLOAT
+      );
+    END LOOP;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Seed initial exercise data
 INSERT INTO available_exercises (id, name, primary_muscle_group, secondary_muscle_group) VALUES
   (uuid_generate_v4(), 'Bench Press', 'Chest', 'Triceps'),

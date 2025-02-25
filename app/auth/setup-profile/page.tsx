@@ -10,6 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { redirect } from "next/navigation"
+import { supabase } from "@/utils/supabase/client"
 import { useAuth } from "@/contexts/auth-context"
 
 const profileSchema = z.object({
@@ -29,19 +31,40 @@ const profileSchema = z.object({
 })
 
 export default function SetupProfilePage() {
-  const { user, profile, createProfile } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
 
-  // If user is not logged in, redirect to auth page
-  useEffect(() => {
-    if (!user) {
-      router.push("/auth")
-    }
-    // If user already has a profile, redirect to home
-    if (profile) {
-      router.push("/")
-    }
-  }, [user, profile, router])
+  const createProfile = async (data: {
+    name: string
+    gender: "Male" | "Female" | "Other"
+    date_of_birth: string
+    weight_kg: number
+    height_cm: number
+    body_fat_percentage?: number
+    unit_preference?: "metric" | "imperial"
+    theme_preference?: "light" | "dark"
+  }) => {
+    if (!user) throw new Error('No user logged in')
+
+    const { error } = await supabase
+      .from('users')
+      .insert([
+        {
+          id: user.id,
+          email: user.email,
+          ...data,
+          total_volume: 0,
+          total_workouts: 0,
+        }
+      ])
+
+    if (error) throw error
+  }
+
+  // Redirect if not logged in
+  if (!user) {
+    redirect('/auth/login')
+  }
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -59,16 +82,13 @@ export default function SetupProfilePage() {
   const onSubmit = async (values: z.infer<typeof profileSchema>) => {
     try {
       await createProfile(values)
+      router.push("/")
     } catch (error) {
       console.error("Error creating profile:", error)
       form.setError("root", {
         message: error instanceof Error ? error.message : "Failed to create profile",
       })
     }
-  }
-
-  if (!user) {
-    return null // Will redirect in useEffect
   }
 
   return (

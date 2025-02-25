@@ -1,73 +1,38 @@
 "use client"
 
+// TODO: Implement haptic feedback when haptics module is ready
+
 import { useState, useTransition } from "react"
 import { Plus, Save } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { ExerciseList } from "@/components/exercise/exercise-list"
-import { ExerciseSelector } from "@/components/exercise/exercise-selector"
-import { SetEditor } from "@/components/exercise/set-editor"
-import { WorkoutWelcome } from "@/components/exercise/workout-welcome"
+import { Card } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
+import { useToast } from "@/components/ui/use-toast"
+import { ExerciseList } from "./exercise-list"
+import { ExerciseSelector } from "./exercise-selector"
+import { SetEditor } from "./set-editor"
+import { WorkoutWelcome } from "./workout-welcome"
 import { ExerciseSkeleton } from "@/components/loading/exercise-skeleton"
-import { useHaptic } from "@/hooks/use-haptic"
-import type { WorkoutExercise } from "@/types/exercises"
+import type { WorkoutExercise, Exercise, Set } from "@/types/exercises"
 import type { Workout } from "@/types/workouts"
-import { exerciseGroups } from "@/lib/exercises"
+import { supabase } from "@/utils/supabase/client"
 
 export function WorkoutTracker() {
   const [exercises, setExercises] = useState<WorkoutExercise[]>([])
-  const [showExerciseModal, setShowExerciseModal] = useState(false)
   const [selectedExercise, setSelectedExercise] = useState<WorkoutExercise | null>(null)
-  const [selectedExercises, setSelectedExercises] = useState<string[]>([])
+  const [showExerciseModal, setShowExerciseModal] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const haptic = useHaptic()
+  const [isSaving, setIsSaving] = useState(false)
+  const { toast } = useToast()
 
   const isWorkoutValid =
     exercises.length > 0 &&
     exercises.every(
-      (exercise) => exercise.sets.length > 0 && exercise.sets.every((set) => set.reps > 0 && set.weight_kg > 0),
+      (exercise) =>
+        exercise.sets.length > 0 &&
+        exercise.sets.every((set) => set.reps > 0 && set.weight_kg > 0)
     )
-
-  const calculateTotalVolume = (exercises: WorkoutExercise[]) => {
-    return exercises.reduce((total, exercise) => {
-      return (
-        total +
-        exercise.sets.reduce((setTotal, set) => {
-          return setTotal + set.weight_kg * set.reps
-        }, 0)
-      )
-    }, 0)
-  }
-
-  const handleExerciseToggle = (id: string) => {
-    haptic.trigger()
-    setSelectedExercises((prev) => {
-      const newSelection = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-      return newSelection
-    })
-  }
-
-  const handleAddExercises = () => {
-    startTransition(() => {
-      const newExercises = selectedExercises
-        .map((id) => {
-          const exercise = Object.values(exerciseGroups)
-            .flat()
-            .find((e) => e.id === id)
-          if (!exercise) return null
-          return {
-            exercise,
-            sets: [{ weight_kg: 0, reps: 0 }],
-          }
-        })
-        .filter((ex): ex is WorkoutExercise => ex !== null)
-
-      setExercises([...exercises, ...newExercises])
-      setSelectedExercises([])
-      setShowExerciseModal(false)
-      haptic.success()
-    })
-  }
 
   const handleUpdateSets = (exerciseIndex: number, newSets: Set[]) => {
     if (exerciseIndex === -1) return
@@ -76,48 +41,87 @@ export function WorkoutTracker() {
     setExercises(updatedExercises)
 
     // Update selectedExercise if it's the same exercise being edited
-    if (selectedExercise && selectedExercise.exercise.id === updatedExercises[exerciseIndex].exercise.id) {
+    if (selectedExercise && selectedExercise.id === updatedExercises[exerciseIndex].id) {
       setSelectedExercise(updatedExercises[exerciseIndex])
     }
+  }
 
-    haptic.trigger()
+  const handleExerciseSelect = (exercise: WorkoutExercise) => {
+    // Find the full exercise data from our exercises array
+    const existingExercise = exercises.find(ex => ex.id === exercise.id)
+    if (existingExercise) {
+      setSelectedExercise(existingExercise)
+    }
   }
 
   const handleRemoveExercise = (index: number) => {
     startTransition(() => {
       setExercises(exercises.filter((_, i) => i !== index))
-      haptic.error()
     })
   }
 
-  const handleSaveWorkout = () => {
-    if (isWorkoutValid) {
-      startTransition(() => {
-        const now = new Date()
-        const workout: Workout = {
-          id: crypto.randomUUID(),
-          date: now.toISOString().split("T")[0],
-          time: now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-          totalVolume: calculateTotalVolume(exercises),
-          exercises: exercises.map((ex) => ({
-            name: ex.exercise.name,
-            sets: ex.sets.map((set) => ({
-              reps: set.reps,
-              weight: set.weight_kg,
-            })),
-          })),
-        }
+  const handleSaveWorkout = async () => {
+    if (!isWorkoutValid) return
 
-        // Get existing workouts from localStorage
-        const existingWorkouts = JSON.parse(localStorage.getItem("workouts") || "[]")
-        // Add new workout
-        const updatedWorkouts = [workout, ...existingWorkouts]
-        // Save back to localStorage
-        localStorage.setItem("workouts", JSON.stringify(updatedWorkouts))
+    setIsSaving(true)
+    const now = new Date()
+    
+    const workout: Omit<Workout, "id"> = {
+      created_at: now.toISOString(),
+      exercises: exercises.map(({ exercise, sets }) => ({
+        name: exercise.name,
+        sets: sets.map(set => ({
+          reps: set.reps,
+          weight: set.weight_kg,
+        })),
+      })),
+      totalVolume: exercises.reduce(
+        (total, { sets }) =>
+          total +
+          sets.reduce((setTotal, set) => setTotal + set.weight_kg * set.reps, 0),
+        0
+      ),
+    }
 
-        setExercises([])
-        haptic.success()
+    try {
+      // Log auth state before making request
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('Client auth status:', {
+        hasSession: !!session,
+        userId: session?.user?.id
       })
+
+      const response = await fetch("/api/v1/workouts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(workout),
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => null)
+        throw new Error(error?.error || "Failed to save workout")
+      }
+
+      toast({
+        title: "Workout saved!",
+        description: "Your workout has been saved successfully.",
+      })
+
+      // Reset state
+      setExercises([])
+      setSelectedExercise(null)
+    } catch (error) {
+      console.error("Error saving workout:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save workout. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -130,7 +134,7 @@ export function WorkoutTracker() {
       ) : (
         <ExerciseList
           exercises={exercises}
-          onExerciseSelect={setSelectedExercise}
+          onExerciseSelect={handleExerciseSelect}
           onExerciseRemove={handleRemoveExercise}
         />
       )}
@@ -148,6 +152,8 @@ export function WorkoutTracker() {
               <Button
                 size="icon"
                 onClick={handleSaveWorkout}
+                disabled={isSaving}
+                aria-label="Save Workout"
                 className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all bg-green-500 hover:bg-green-600 active:scale-95"
               >
                 <Save className="h-6 w-6" />
@@ -155,13 +161,14 @@ export function WorkoutTracker() {
             </motion.div>
           )}
         </AnimatePresence>
+
         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
           <Button
             size="icon"
             onClick={() => {
               setShowExerciseModal(true)
-              haptic.trigger()
             }}
+            aria-label="Add Exercise"
             className="h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all bg-[#4B7BFF] hover:bg-[#4B7BFF]/90"
           >
             <Plus className="h-6 w-6" />
@@ -172,20 +179,30 @@ export function WorkoutTracker() {
       <ExerciseSelector
         open={showExerciseModal}
         onOpenChange={setShowExerciseModal}
-        selectedExercises={selectedExercises}
-        onExerciseToggle={handleExerciseToggle}
-        onAddExercises={handleAddExercises}
+        onAddExercises={(selectedExerciseData) => {
+          startTransition(() => {
+            const newExercises = selectedExerciseData.map((exercise) => ({
+              id: exercise.id,
+              exercise,
+              sets: [{ weight_kg: 0, reps: 0 }],
+            }))
+
+            setExercises([...exercises, ...newExercises])
+            setShowExerciseModal(false)
+          })
+        }}
       />
 
       {selectedExercise && (
         <SetEditor
           exercise={selectedExercise}
+          exerciseIndex={exercises.findIndex(
+            (ex) => ex.id === selectedExercise.id
+          )}
           onClose={() => setSelectedExercise(null)}
           onUpdateSets={handleUpdateSets}
-          exerciseIndex={exercises.findIndex((ex) => ex.exercise.id === selectedExercise.exercise.id)}
         />
       )}
     </div>
   )
 }
-

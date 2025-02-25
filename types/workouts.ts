@@ -10,10 +10,7 @@ export interface WorkoutExercise {
 
 export interface Workout {
   id: string
-  date: string
-  time: string
-  duration: number
-  totalVolume: number
+  created_at: string
   exercises: WorkoutExercise[]
+  totalVolume: number
 }
-
