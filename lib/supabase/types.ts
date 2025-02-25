@@ -9,7 +9,7 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      Users: {
+      users: {
         Row: {
           id: string
           email: string
@@ -59,7 +59,7 @@ export interface Database {
           updated_at?: string
         }
       }
-      Workouts: {
+      workouts: {
         Row: {
           id: string
           user_id: string
@@ -76,7 +76,7 @@ export interface Database {
           created_at?: string
         }
       }
-      Available_Exercises: {
+      available_exercises: {
         Row: {
           id: string
           name: string
@@ -96,7 +96,7 @@ export interface Database {
           secondary_muscle_group?: string | null
         }
       }
-      Workout_Exercises: {
+      workout_exercises: {
         Row: {
           id: string
           workout_id: string
@@ -116,7 +116,7 @@ export interface Database {
           created_at?: string
         }
       }
-      Sets: {
+      sets: {
         Row: {
           id: string
           workout_exercise_id: string
@@ -139,7 +139,7 @@ export interface Database {
           created_at?: string
         }
       }
-      Daily_Volume: {
+      daily_volume: {
         Row: {
           id: number
           user_id: string
