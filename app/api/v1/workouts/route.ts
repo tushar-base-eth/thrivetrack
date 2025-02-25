@@ -4,78 +4,77 @@ import { cookies } from "next/headers"
 import { type Database } from "@/types/supabase"
 import { WorkoutSubmission } from "@/lib/types/workouts"
 import { saveWorkout } from "@/lib/supabase/workouts"
+import { workoutSubmissionSchema, workoutInsertSchema } from "@/lib/validations/workouts"
 
-// Validation schema for workout data
-const workoutSetSchema = z.object({
-  reps: z.number().min(1),
-  weight_kg: z.number().min(0),
-})
-
-const workoutExerciseSchema = z.object({
-  name: z.string().min(1),
-  sets: z.array(workoutSetSchema),
-})
-
-const workoutSchema = z.object({
-  exercises: z.array(workoutExerciseSchema),
-  totalVolume: z.number(),
-  created_at: z.string().datetime(),
-})
-
+// POST /api/v1/workouts - Save a new workout
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = cookies()
-    const supabase = createRouteHandlerClient<Database>(cookieStore)
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
     
-    // Log cookies for debugging
-    console.log('Cookies:', cookieStore.getAll())
-    
-    const {
-      data: { session },
-      error: authError,
-    } = await supabase.auth.getSession()
-
-    // Log auth status
-    console.log('Auth status:', { 
-      hasSession: !!session, 
-      userId: session?.user?.id,
-      error: authError
-    })
-
-    if (authError || !session?.user) {
-      console.error("Auth error:", authError || "No session")
-      return new NextResponse("Unauthorized", { status: 401 })
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401 }
+      )
     }
-
+    
+    // Get user ID from session
+    const userId = session.user.id
+    
+    // Parse request body
     const body = await request.json()
-    const result = workoutSchema.safeParse(body)
-
-    if (!result.success) {
-      return new NextResponse(JSON.stringify(result.error), { status: 400 })
+    
+    // Validate request body using Zod schema
+    const validationResult = workoutSubmissionSchema.safeParse(body)
+    if (!validationResult.success) {
+      return new NextResponse(
+        JSON.stringify({ 
+          error: "Invalid request body",
+          details: validationResult.error.format()
+        }),
+        { status: 400 }
+      )
     }
 
-    const workout = result.data
-
-    // Create a simpler data structure that the stored procedure can handle
-    // instead of trying to match the full WorkoutExercise type
-    await saveWorkout({
-      workout: {
-        user_id: session.user.id,
-        created_at: workout.created_at,
-        totalVolume: workout.totalVolume,
-        exercises: workout.exercises.map(exercise => ({
-          name: exercise.name,
-          sets: exercise.sets
-        }))
-      },
-      userId: session.user.id,
+    // Extract validated data
+    const workoutData = validationResult.data
+    
+    // Ensure workout belongs to authenticated user
+    if (workoutData.user_id !== userId) {
+      return new NextResponse(
+        JSON.stringify({ error: "Cannot create workout for another user" }),
+        { status: 403 }
+      )
+    }
+    
+    // Create workout base record - only fields in the database schema
+    const workoutInsert = workoutInsertSchema.parse({
+      user_id: userId,
+      created_at: new Date().toISOString(),
+    });
+    
+    // Save workout including metadata (name, totalVolume) which is stored in a separate table/field
+    const result = await saveWorkout({
+      ...workoutData,
+      workoutRecord: workoutInsert
     })
-
-    return new NextResponse(JSON.stringify({ success: true }), { status: 200 })
+    
+    if (!result) {
+      return new NextResponse(
+        JSON.stringify({ error: "Failed to save workout" }),
+        { status: 500 }
+      )
+    }
+    
+    return NextResponse.json({ success: true, id: result.id })
   } catch (error) {
     console.error("Error saving workout:", error)
-    return new NextResponse(JSON.stringify({ error: "Internal Server Error" }), {
-      status: 500,
-    })
+    return new NextResponse(
+      JSON.stringify({ error: "Internal Server Error" }),
+      { status: 500 }
+    )
   }
 }

@@ -3,7 +3,7 @@
 // TODO: Implement haptic feedback when haptics module is ready
 
 import { useState, useTransition } from "react"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils"
 import { saveWorkout } from "@/lib/supabase/workouts"
 import { supabase } from "@/utils/supabase/client"
 import { LocalExercise } from "./types"
+import { WorkoutWelcome } from "./workout-welcome"
 
 // Create a simplified version of WorkoutExercise for local use in this component
 // export type LocalExercise = {
@@ -219,8 +220,8 @@ export function WorkoutTracker() {
               exercise: {
                 id: exercise.id,
                 name: exercise.name,
-                category: exercise.primary_muscle_group,
-                description: exercise.description
+                primary_muscle_group: exercise.primary_muscle_group,
+                secondary_muscle_group: exercise.secondary_muscle_group
               },
             }))
 

@@ -1,27 +1,16 @@
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Database } from "@/types/supabase"
-import { WorkoutSubmission, WorkoutSummary } from "@/lib/types/workouts"
+import { WorkoutSubmission, WorkoutSummary, WorkoutInsert } from "@/lib/types/workouts"
 
 const supabase = createClientComponentClient<Database>()
 
-// Define a simpler interface for workout data that doesn't require
-// all the database fields since the stored procedure will handle that
-interface SimplifiedWorkout {
-  user_id: string
-  created_at: string
-  totalVolume: number
-  exercises: {
-    name: string
-    sets: {
-      reps: number
-      weight_kg: number
-    }[]
-  }[]
-}
-
+// Interface for saving workouts that includes both DB fields and metadata
 interface SaveWorkoutOptions {
-  workout: SimplifiedWorkout
-  userId: string
+  name: string;
+  user_id: string;
+  totalVolume: number;
+  exercises: WorkoutSubmission['exercises'];
+  workoutRecord: WorkoutInsert;
 }
 
 interface WorkoutTransaction {
@@ -34,13 +23,11 @@ interface WorkoutTransaction {
  * Saves a workout and its exercises to the database in a transaction.
  * Also updates user stats and daily volume.
  */
-export async function saveWorkout({ workout, userId }: SaveWorkoutOptions) {
+export async function saveWorkout(options: SaveWorkoutOptions) {
+  // Insert only fields that exist in the database schema
   const { data: workoutData, error: workoutError } = await supabase
     .from("workouts")
-    .insert({
-      user_id: userId,
-      created_at: new Date().toISOString(),
-    })
+    .insert(options.workoutRecord)
     .select()
     .single()
 
@@ -54,9 +41,10 @@ export async function saveWorkout({ workout, userId }: SaveWorkoutOptions) {
   try {
     await supabase.rpc("create_workout_with_exercises", {
       p_workout_id: workoutId,
-      p_user_id: userId,
-      p_total_volume: workout.totalVolume,
-      p_exercises: workout.exercises.map(exercise => ({
+      p_user_id: options.user_id,
+      p_total_volume: options.totalVolume,
+      p_exercises: options.exercises.map(exercise => ({
+        exercise_id: exercise.exercise_id,
         name: exercise.name,
         sets: exercise.sets.map(set => ({
           reps: set.reps,
@@ -70,7 +58,7 @@ export async function saveWorkout({ workout, userId }: SaveWorkoutOptions) {
     throw new Error(`Failed to save workout exercises: ${error}`)
   }
 
-  return workoutId
+  return { id: workoutId }
 }
 
 /**

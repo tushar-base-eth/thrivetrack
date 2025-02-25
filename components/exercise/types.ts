@@ -18,16 +18,15 @@ export type LocalExercise = {
   exercise?: {
     id: string;
     name: string;
-    category?: string;
-    description?: string;
+    primary_muscle_group: string;
+    secondary_muscle_group?: string | null;
   };
 };
 
-// Exercise selector types
+// Exercise selector types - aligned with available_exercises table
 export type ExerciseSelection = {
   id: string;
   name: string;
   primary_muscle_group: string;
-  secondary_muscle_group?: string;
-  description?: string;
+  secondary_muscle_group?: string | null;
 };

@@ -1,10 +1,10 @@
-import type { Exercise } from "@/types/exercises"
+import { ExerciseSelection } from "@/components/exercise/types"
 
 export interface ExerciseGroup {
-  [key: string]: Exercise[]
+  [key: string]: ExerciseSelection[]
 }
 
-export async function fetchExercises(): Promise<{ grouped: ExerciseGroup; flat: Exercise[] }> {
+export async function fetchExercises(): Promise<{ grouped: ExerciseGroup; flat: ExerciseSelection[] }> {
   const response = await fetch("/api/v1/available_exercises", {
     credentials: "include"
   })

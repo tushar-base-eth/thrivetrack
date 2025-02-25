@@ -9,13 +9,13 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { motion } from "framer-motion"
 import { fetchExercises } from "@/lib/supabase/exercises"
-import type { Exercise } from "@/types/exercises"
+import { ExerciseSelection } from "./types"
 import type { ExerciseGroup } from "@/lib/supabase/exercises"
 
 interface ExerciseSelectorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAddExercises: (selectedExercises: Exercise[]) => void
+  onAddExercises: (selectedExercises: ExerciseSelection[]) => void
 }
 
 type TabValue = "all" | "byMuscle"
@@ -29,7 +29,7 @@ export function ExerciseSelector({
   const [selectedTab, setSelectedTab] = useState<TabValue>("all")
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string | null>(null)
   const [exerciseGroups, setExerciseGroups] = useState<ExerciseGroup>({})
-  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [exercises, setExercises] = useState<ExerciseSelection[]>([])
   const [selectedExercises, setSelectedExercises] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -62,7 +62,7 @@ export function ExerciseSelector({
   )
 
   const filteredExercises = selectedTab === "all" 
-    ? exercises.filter((ex: Exercise) => 
+    ? exercises.filter((ex: ExerciseSelection) => 
         ex.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : Object.entries(exerciseGroups).reduce(
@@ -155,7 +155,7 @@ export function ExerciseSelector({
 
                   {selectedTab === "all" ? (
                     <div className="space-y-2">
-                      {(filteredExercises as Exercise[]).map((exercise: Exercise) => (
+                      {(filteredExercises as ExerciseSelection[]).map((exercise: ExerciseSelection) => (
                         <motion.div
                           key={exercise.id}
                           initial={{ opacity: 0, y: 10 }}
@@ -180,7 +180,7 @@ export function ExerciseSelector({
                       <div key={group}>
                         <h3 className="font-semibold mb-3">{group}</h3>
                         <div className="space-y-2">
-                          {exercises.map((exercise: Exercise) => (
+                          {exercises.map((exercise: ExerciseSelection) => (
                             <motion.div
                               key={exercise.id}
                               initial={{ opacity: 0, y: 10 }}

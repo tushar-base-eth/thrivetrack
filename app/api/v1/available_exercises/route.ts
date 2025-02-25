@@ -1,5 +1,8 @@
-import { createClient } from "@/utils/supabase/server";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { type Database } from "@/types/supabase";
+import { ExerciseSelection } from "@/components/exercise/types";
 
 // Make route static
 export const dynamic = "force-static";
@@ -7,7 +10,8 @@ export const dynamic = "force-static";
 export async function GET() {
   try {
     // Move client creation inside the request handler
-    const supabase = createClient();
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
     
     const { data, error } = await supabase
       .from("available_exercises")
@@ -23,17 +27,18 @@ export async function GET() {
       );
     }
 
-    // Convert to Exercise type and group by muscle group
-    const exercises = data.map((exercise) => ({
+    // Convert to ExerciseSelection type
+    const exercises: ExerciseSelection[] = data.map((exercise) => ({
       id: exercise.id,
       name: exercise.name,
       primary_muscle_group: exercise.primary_muscle_group,
       secondary_muscle_group: exercise.secondary_muscle_group || undefined,
+      description: exercise.description || undefined,
     }));
 
     // Group exercises by primary muscle group
     const groupedExercises = exercises.reduce<
-      Record<string, (typeof exercises)[0][]>
+      Record<string, ExerciseSelection[]>
     >((acc, exercise) => {
       const group = exercise.primary_muscle_group;
       if (!acc[group]) {
