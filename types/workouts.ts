@@ -1,16 +1,13 @@
-export interface WorkoutSet {
-  reps: number
-  weight: number
-}
+import type { Database } from './supabase'
 
-export interface WorkoutExercise {
-  name: string
+export type WorkoutSet = Database['public']['Tables']['sets']['Row']
+
+export type WorkoutExercise = Database['public']['Tables']['workout_exercises']['Row'] & {
   sets: WorkoutSet[]
+  exercise: Database['public']['Tables']['available_exercises']['Row']
 }
 
-export interface Workout {
-  id: string
-  created_at: string
+export type Workout = Database['public']['Tables']['workouts']['Row'] & {
   exercises: WorkoutExercise[]
   totalVolume: number
 }
