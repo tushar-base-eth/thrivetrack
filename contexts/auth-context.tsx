@@ -2,13 +2,13 @@
  * Authentication Context Provider
  *
  * Manages global authentication state and user profile data using React Context.
- * Implements mock authentication for development purposes with localStorage persistence.
+ * Implements Supabase authentication with proper session management.
  *
  * Features:
  * - User authentication state management
  * - User profile data management
- * - Mock authentication methods (login, signup, logout)
- * - Persistent authentication using localStorage
+ * - Supabase authentication methods (login, signup, logout)
+ * - Session management
  * - Type-safe context with TypeScript
  *
  * UX Considerations:
@@ -21,9 +21,9 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useReducer, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { createBrowserClient } from "@supabase/ssr"
 
 // User profile interface matching settings form
 export interface UserProfile {
@@ -64,13 +64,15 @@ const AuthContext = createContext<{
   state: AuthState
   login: (email: string, password: string) => Promise<void>
   signup: (user: UserProfile, password: string) => Promise<void>
-  logout: () => void
-  updateProfile: (user: UserProfile) => void
+  logout: () => Promise<void>
+  updateProfile: (user: UserProfile) => Promise<void>
 } | null>(null)
 
-// Mock storage keys
-const MOCK_USERS = "thrivetrack_users"
-const MOCK_CURRENT_USER = "thrivetrack_current_user"
+// Create Supabase client
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 // Authentication reducer
 function authReducer(state: AuthState, action: AuthAction): AuthState {
@@ -112,67 +114,155 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load authentication state on mount
   useEffect(() => {
-    const currentUser = localStorage.getItem(MOCK_CURRENT_USER)
-    if (currentUser) {
-      dispatch({ type: "LOGIN", user: JSON.parse(currentUser) })
-    } else {
-      dispatch({ type: "SET_LOADING", isLoading: false })
+    const loadSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) throw error
+        
+        if (session?.user) {
+          const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+            
+          if (profileError) throw profileError
+          
+          dispatch({ type: "LOGIN", user: profile })
+        }
+      } catch (error) {
+        console.error("Error loading session:", error)
+      } finally {
+        dispatch({ type: "SET_LOADING", isLoading: false })
+      }
+    }
+
+    loadSession()
+
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+        
+        if (profile) {
+          dispatch({ type: "LOGIN", user: profile })
+        }
+      } else if (event === 'SIGNED_OUT') {
+        dispatch({ type: "LOGOUT" })
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
     }
   }, [])
 
-  // Mock authentication methods
   const login = async (email: string, password: string) => {
     dispatch({ type: "SET_LOADING", isLoading: true })
+    try {
+      const { data: { user }, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      
+      if (error) throw error
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const users = JSON.parse(localStorage.getItem(MOCK_USERS) || "[]")
-    const user = users.find((u: UserProfile & { password: string }) => u.email === email && u.password === password)
-
-    if (user) {
-      const { password: _, ...userProfile } = user
-      localStorage.setItem(MOCK_CURRENT_USER, JSON.stringify(userProfile))
-      dispatch({ type: "LOGIN", user: userProfile })
-      router.push("/")
-    } else {
-      throw new Error("Invalid credentials")
+      if (user) {
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        
+        if (profileError) throw profileError
+        
+        dispatch({ type: "LOGIN", user: profile })
+        router.push("/")
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(error.message)
+      }
+      throw new Error("An error occurred during login")
+    } finally {
+      dispatch({ type: "SET_LOADING", isLoading: false })
     }
   }
 
   const signup = async (user: UserProfile, password: string) => {
     dispatch({ type: "SET_LOADING", isLoading: true })
+    try {
+      // Create auth user
+      const { data: { user: authUser }, error: signUpError } = await supabase.auth.signUp({
+        email: user.email,
+        password: password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        }
+      })
+      
+      if (signUpError) throw signUpError
+      if (!authUser) throw new Error("Failed to create user")
 
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Create user profile
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert([
+          {
+            id: authUser.id,
+            ...user,
+          }
+        ])
+      
+      if (profileError) throw profileError
 
-    const users = JSON.parse(localStorage.getItem(MOCK_USERS) || "[]")
-    if (users.some((u: UserProfile) => u.email === user.email)) {
-      throw new Error("Email already exists")
+      dispatch({ type: "SIGNUP", user })
+      router.push("/auth/verify")
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(error.message)
+      }
+      throw new Error("An error occurred during signup")
+    } finally {
+      dispatch({ type: "SET_LOADING", isLoading: false })
     }
-
-    users.push({ ...user, password })
-    localStorage.setItem(MOCK_USERS, JSON.stringify(users))
-    localStorage.setItem(MOCK_CURRENT_USER, JSON.stringify(user))
-
-    dispatch({ type: "SIGNUP", user })
-    router.push("/")
   }
 
-  const logout = () => {
-    localStorage.removeItem(MOCK_CURRENT_USER)
-    dispatch({ type: "LOGOUT" })
-    router.push("/auth")
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+      
+      dispatch({ type: "LOGOUT" })
+      router.push("/auth")
+    } catch (error) {
+      console.error("Error during logout:", error)
+    }
   }
 
-  const updateProfile = (user: UserProfile) => {
-    const users = JSON.parse(localStorage.getItem(MOCK_USERS) || "[]")
-    const updatedUsers = users.map((u: UserProfile & { password: string }) =>
-      u.email === user.email ? { ...u, ...user } : u,
-    )
-    localStorage.setItem(MOCK_USERS, JSON.stringify(updatedUsers))
-    localStorage.setItem(MOCK_CURRENT_USER, JSON.stringify(user))
-    dispatch({ type: "UPDATE_PROFILE", user })
+  const updateProfile = async (user: UserProfile) => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) throw new Error("Not authenticated")
+
+      const { error } = await supabase
+        .from('users')
+        .update(user)
+        .eq('id', authUser.id)
+      
+      if (error) throw error
+
+      dispatch({ type: "UPDATE_PROFILE", user })
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(error.message)
+      }
+      throw new Error("An error occurred while updating profile")
+    }
   }
 
   return <AuthContext.Provider value={{ state, login, signup, logout, updateProfile }}>{children}</AuthContext.Provider>
