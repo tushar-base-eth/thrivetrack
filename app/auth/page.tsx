@@ -60,11 +60,11 @@ function AuthForm() {
       email: "",
       password: "",
       name: "",
-      gender: "Male" as const,
-      date_of_birth: "",
-      weight_kg: 70,
-      height_cm: 170,
-      body_fat_percentage: null,
+      gender: "Other" as const,
+      date_of_birth: "2000-01-01",  // Fixed date that ensures user is over 13
+      weight_kg: 70,  // Valid: between 20-300
+      height_cm: 170,  // Valid: between 100-250
+      body_fat_percentage: 20,  // Valid: between 1-100
       unit_preference: "metric" as const,
       theme_preference: "light" as const,
     } : {
@@ -79,26 +79,17 @@ function AuthForm() {
 
       if (mode === "signup") {
         await signUp(values as SignUpFormData)
+        router.push("/dashboard")
       } else {
-        const { email, password } = values as LoginFormData
-        await signIn(email, password)
+        await signIn(values.email, values.password)
+        router.push("/dashboard")
       }
     } catch (error) {
       console.error("Auth error:", error)
-      if (error instanceof z.ZodError) {
-        form.setError("root", {
-          message: "Validation failed",
-        })
-        error.issues.forEach((issue) => {
-          form.setError(issue.path as any, {
-            message: issue.message,
-          })
-        })
-      } else {
-        form.setError("root", {
-          message: error instanceof Error ? error.message : "Authentication failed",
-        })
-      }
+      form.setError("root", {
+        message: error instanceof Error ? error.message : "Authentication failed",
+      })
+    } finally {
       setIsLoading(false)
     }
   }
