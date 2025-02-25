@@ -134,7 +134,15 @@ ThriveTrack is a simple, intuitive fitness tracking web application designed to 
    - ✅ Industry-standard password requirements
    - ✅ Database-level rate limiting
 
-3. **Files Created/Modified**
+3. **UI/UX Decisions**
+   - Using shadcn/ui for consistent, accessible components
+   - Lucide icons for clean, modern iconography
+   - No direct Radix UI dependencies (included via shadcn/ui)
+   - Framer Motion for smooth animations
+   - Dark mode support via next-themes
+   - Mobile-first responsive design
+
+4. **Files Created/Modified**
    - `contexts/auth-context.tsx`: Supabase auth integration
    - `app/auth/page.tsx`: Auth forms and Google OAuth
    - `app/auth/verify/page.tsx`: Email verification page
@@ -222,6 +230,12 @@ ThriveTrack is a simple, intuitive fitness tracking web application designed to 
    - Created test scripts for verification
    - Maintained clear status updates
    - Recorded challenges and solutions
+
+5. **UI Component Strategy**
+   - Using shadcn/ui for pre-built, accessible components
+   - Avoiding direct Radix UI dependencies
+   - Consistent component styling and behavior
+   - Mobile-first responsive design
 
 #### Next Steps (Step 3)
 1. Implement workout logging functionality
