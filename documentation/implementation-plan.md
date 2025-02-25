@@ -1525,7 +1525,6 @@ ThriveTrack is a fitness tracking web app built with Next.js and Supabase, featu
                id: w.id,
                date: new Date(w.created_at).toISOString().split("T")[0],
                time: new Date(w.created_at).toLocaleTimeString(),
-               duration: 60, // Placeholder, could be calculated
                totalVolume: w.Workout_Exercises.reduce(
                  (sum: number, we: any) =>
                    sum +
