@@ -22,110 +22,101 @@
 
 "use client"
 
-import { Suspense } from "react"
-import { useState } from "react"
+import { Suspense, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { motion, AnimatePresence } from "framer-motion"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
-import { useHaptic } from "@/hooks/use-haptic"
-import type { UserProfile } from "@/contexts/auth-context"
-import { createClient } from "@supabase/supabase-js"
-import { useSearchParams } from "next/navigation"
+import { loginSchema, signupSchema, type LoginFormData, type SignUpFormData } from "@/lib/validations/auth"
+import Link from "next/link"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-// Form validation schemas
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-})
+export default function AuthPage() {
+  return (
+    <div className="container flex items-center justify-center min-h-screen py-8">
+      <Suspense fallback={<div>Loading...</div>}>
+        <AuthForm />
+      </Suspense>
+    </div>
+  )
+}
 
-const signupSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  gender: z.enum(["male", "female", "other"]),
-  weight_unit: z.enum(["kg", "lbs"]),
-  height_unit: z.enum(["cm", "ft"]),
-})
-
-// Auth form component
 function AuthForm() {
   const searchParams = useSearchParams()
   const mode = searchParams.get("mode") === "signup" ? "signup" : "login"
   const { signIn, signUp } = useAuth()
-  const haptic = useHaptic()
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
-  const form = useForm({
+  const form = useForm<LoginFormData | SignUpFormData>({
     resolver: zodResolver(mode === "signup" ? signupSchema : loginSchema),
-    defaultValues: {
+    defaultValues: mode === "signup" ? {
       email: "",
       password: "",
       name: "",
-      gender: "male" as const,
-      weight_unit: "kg" as const,
-      height_unit: "cm" as const,
+      gender: "Male" as const,
+      date_of_birth: "",
+      weight_kg: 70,
+      height_cm: 170,
+      body_fat_percentage: null,
+      unit_preference: "metric" as const,
+      theme_preference: "light" as const,
+    } : {
+      email: "",
+      password: "",
     },
   })
 
-  const onSubmit = async (values: z.infer<typeof signupSchema>) => {
+  const onSubmit = async (values: LoginFormData | SignUpFormData) => {
     try {
       setIsLoading(true)
-      haptic.impact()
 
       if (mode === "signup") {
-        const { email, password, ...profile } = values
-        await signUp(email, password, profile)
+        await signUp(values as SignUpFormData)
       } else {
-        await signIn(values.email, values.password)
+        const { email, password } = values as LoginFormData
+        await signIn(email, password)
       }
     } catch (error) {
-      haptic.notification("error")
       console.error("Auth error:", error)
-    } finally {
+      if (error instanceof z.ZodError) {
+        form.setError("root", {
+          message: "Validation failed",
+        })
+        error.issues.forEach((issue) => {
+          form.setError(issue.path as any, {
+            message: issue.message,
+          })
+        })
+      } else {
+        form.setError("root", {
+          message: error instanceof Error ? error.message : "Authentication failed",
+        })
+      }
       setIsLoading(false)
     }
   }
 
-  const handleGoogleLogin = async () => {
-    try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-          skipBrowserRedirect: false // Change to use redirect flow instead of popup
-        },
-      })
-
-      if (error) throw error
-    } catch (error) {
-      console.error("Google login error:", error)
-    }
-  }
-
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle>{mode === "signup" ? "Create Account" : "Welcome Back"}</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {form.formState.errors.root && (
+              <div className="rounded-md bg-destructive/15 p-3">
+                <div className="text-sm text-destructive">{form.formState.errors.root.message}</div>
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="email"
@@ -139,6 +130,164 @@ function AuthForm() {
                 </FormItem>
               )}
             />
+
+            {mode === "signup" && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select gender" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="date_of_birth"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of Birth</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="weight_kg"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Weight (kg)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="height_cm"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Height (cm)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="body_fat_percentage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Body Fat % (optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : null)}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="unit_preference"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Units</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select units" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="metric">Metric (kg, cm)</SelectItem>
+                          <SelectItem value="imperial">Imperial (lbs, ft)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="theme_preference"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Theme</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select theme" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="light">Light</SelectItem>
+                          <SelectItem value="dark">Dark</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+
             <FormField
               control={form.control}
               name="password"
@@ -153,130 +302,35 @@ function AuthForm() {
               )}
             />
 
-            <AnimatePresence>
-              {mode === "signup" && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="gender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select gender" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="weight_unit"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Weight Unit</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select unit" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="kg">Kilograms (kg)</SelectItem>
-                              <SelectItem value="lbs">Pounds (lbs)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="height_unit"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Height Unit</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select unit" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="cm">Centimeters (cm)</SelectItem>
-                              <SelectItem value="ft">Feet (ft)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
-                "Loading..."
-              ) : mode === "signup" ? (
-                "Create Account"
-              ) : (
-                "Sign In"
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleLogin}
-              disabled={isLoading}
-            >
-              Continue with Google
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  {mode === "signup" ? "Creating Account..." : "Signing In..."}
+                </div>
+              ) : mode === "signup" ? "Create Account" : "Sign In"}
             </Button>
           </form>
         </Form>
+
+        <div className="mt-4 text-center text-sm">
+          {mode === "signup" ? (
+            <>
+              Already have an account?{" "}
+              <Link href="/auth" className="font-medium text-primary hover:underline">
+                Sign In
+              </Link>
+            </>
+          ) : (
+            <>
+              Don&apos;t have an account?{" "}
+              <Link href="/auth?mode=signup" className="font-medium text-primary hover:underline">
+                Create Account
+              </Link>
+            </>
+          )}
+        </div>
       </CardContent>
     </Card>
-  )
-}
-
-// Main auth page component
-export default function AuthPage() {
-  return (
-    <div className="container flex items-center justify-center min-h-screen py-8">
-      <Suspense fallback={<div>Loading...</div>}>
-        <AuthForm />
-      </Suspense>
-    </div>
   )
 }
