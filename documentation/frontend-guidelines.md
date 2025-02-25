@@ -1,7 +1,7 @@
-# FitLite Frontend Guidelines
+# ThriveTrack Frontend Guidelines
 
 ## Overview
-Defines the frontend implementation for FitLite’s MVP, ensuring a native iOS-like experience with Fitbod-inspired styling, optimized for Next.js and AI tools.
+Defines the frontend implementation for ThriveTrack’s MVP, ensuring a native iOS-like experience with Fitbod-inspired styling, optimized for Next.js and AI tools.
 
 ## Design Principles
 - **iOS Aesthetic**: Rounded corners (8px), minimal layout, spacious padding (16px), system font (San Francisco via Tailwind).
@@ -45,7 +45,7 @@ Defines the frontend implementation for FitLite’s MVP, ensuring a native iOS-l
 
 ## Notes for AI
 - Generate components in `components/`; ensure iOS-like UX with react-swipeable and framer-motion.
-- Reference FitLite’s User Flow for design specifics.
+- Reference ThriveTrack’s User Flow for design specifics.
 - Prioritize performance and simplicity for one-day MVP completion.
 
 ## Few Key Points
@@ -60,4 +60,4 @@ Defines the frontend implementation for FitLite’s MVP, ensuring a native iOS-l
   - Add toast notifications (pop-up messages):
     // After saving a workout:  
     import { toast } from 'react-hot-toast';  
-    toast.success('Workout saved!');  
+    toast.success('Workout saved!');

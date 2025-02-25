@@ -1,7 +1,7 @@
-# FitLite Backend Design
+# ThriveTrack Backend Design
 
 ## Overview
-This document defines the backend implementation and PostgreSQL schema for FitLite’s MVP, using Supabase and Next.js API Routes. The architecture is optimized for rapid development and AI tools, supporting dynamic exercise selection and instant dashboard performance.
+This document defines the backend implementation and PostgreSQL schema for ThriveTrack’s MVP, using Supabase and Next.js API Routes. The architecture is optimized for rapid development and AI tools, supporting dynamic exercise selection and instant dashboard performance.
 
 ## Architecture
 - **Supabase**: v2.39.4 for authentication, PostgreSQL database, and RESTful APIs.

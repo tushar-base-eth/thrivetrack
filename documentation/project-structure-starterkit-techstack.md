@@ -1,7 +1,7 @@
-# FitLite Project Structure, Starter Kit, and Tech Stack
+# ThriveTrack Project Structure, Starter Kit, and Tech Stack
 
 ## Overview
-This document provides a comprehensive guide to the project structure, setup instructions, and technology stack for FitLite, a lightweight, high-performance fitness tracking web app optimized for rapid development and AI tools.
+This document provides a comprehensive guide to the project structure, setup instructions, and technology stack for ThriveTrack, a lightweight, high-performance fitness tracking web app optimized for rapid development and AI tools.
 
 ---
 
@@ -35,7 +35,7 @@ This document provides a comprehensive guide to the project structure, setup ins
 
 ### Directory Layout
 ```
-fitlite/
+thrivetrack/
 ├── app/
 │   ├── api/
 │   │   ├── v1/
@@ -110,7 +110,7 @@ fitlite/
 ### Setup Instructions
 1. Initialize Next.js project:
    ```bash
-   npx create-next-app@14.2.3 fitlite --typescript --tailwind
+   npx create-next-app@14.2.3 thrivetrack --typescript --tailwind
    ```
 2. Install dependencies:
    ```bash
@@ -160,5 +160,3 @@ fitlite/
 - Deploy to Vercel with optimized build settings.
 
 ---
-
-

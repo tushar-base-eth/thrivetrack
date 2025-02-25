@@ -1,7 +1,7 @@
-# FitLite Product Requirements Document [PRD]
+# ThriveTrack Product Requirements Document [PRD]
 
 ## Overview
-- **Product Name**: FitLite
+- **Product Name**: ThriveTrack
 - **Objective**: Deliver a simple, intuitive fitness tracking web app with a native iOS-like experience and Fitbod-inspired dark mode, targeting casual gym-goers and beginners.
 - **Unique Selling Proposition (USP)**: "The simplest workout tracker with Fitbod-inspired design and flexibility."
 - **Target Audience**: Casual gym-goers and fitness novices seeking an easy, affordable fitness tracking solution.
@@ -36,7 +36,7 @@
 ## User Flow
 
 ### Overview
-Describes the user journey in FitLite, ensuring a seamless iOS-like experience with smooth navigation and gestures.
+Describes the user journey in ThriveTrack, ensuring a seamless iOS-like experience with smooth navigation and gestures.
 
 ### Flow Steps
 1. **Landing on App**:

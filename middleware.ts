@@ -20,7 +20,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
-  const currentUser = request.cookies.get("fitlite_current_user")
+  const currentUser = request.cookies.get("thrivetrack_current_user")
   const isAuthPage = request.nextUrl.pathname === "/auth"
 
   // Redirect to auth page if not authenticated
@@ -39,4 +39,3 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 }
-

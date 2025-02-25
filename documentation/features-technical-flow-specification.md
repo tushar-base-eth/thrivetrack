@@ -1,7 +1,7 @@
-# FitLite Features/Technical Flow Specification
+# ThriveTrack Features/Technical Flow Specification
 
 ## Overview
-This document provides a detailed breakdown of the feature specifications and technical flow for FitLite, a fitness tracking web app designed for casual gym-goers and beginners. It outlines the user stories, requirements, and technical implementation details for each feature, ensuring a seamless and efficient development process.
+This document provides a detailed breakdown of the feature specifications and technical flow for ThriveTrack, a fitness tracking web app designed for casual gym-goers and beginners. It outlines the user stories, requirements, and technical implementation details for each feature, ensuring a seamless and efficient development process.
 
 ---
 

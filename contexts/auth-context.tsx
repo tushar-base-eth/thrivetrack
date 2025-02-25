@@ -69,8 +69,8 @@ const AuthContext = createContext<{
 } | null>(null)
 
 // Mock storage keys
-const MOCK_USERS = "fitlite_users"
-const MOCK_CURRENT_USER = "fitlite_current_user"
+const MOCK_USERS = "thrivetrack_users"
+const MOCK_CURRENT_USER = "thrivetrack_current_user"
 
 // Authentication reducer
 function authReducer(state: AuthState, action: AuthAction): AuthState {
@@ -186,4 +186,3 @@ export function useAuth() {
   }
   return context
 }
-

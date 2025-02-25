@@ -1,28 +1,20 @@
-import type { MetadataRoute } from "next"
+import { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "FitLite",
-    short_name: "FitLite",
-    description: "Track your workouts and progress",
+    name: "ThriveTrack",
+    short_name: "ThriveTrack",
+    description: "A simple, intuitive fitness tracking web app",
     start_url: "/",
     display: "standalone",
-    background_color: "#1E1E1E",
-    theme_color: "#1E1E1E",
+    background_color: "#1C2526",
+    theme_color: "#3B82F6",
     icons: [
       {
-        src: "/icon-192x192.png",
+        src: "/icon.png",
         sizes: "192x192",
         type: "image/png",
-        purpose: "any maskable",
-      },
-      {
-        src: "/icon-512x512.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any maskable",
       },
     ],
-  }
+  };
 }
-
