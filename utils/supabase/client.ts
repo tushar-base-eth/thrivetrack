@@ -9,7 +9,11 @@ export const supabase = createClient<Database>(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+      storage: typeof window !== 'undefined' ? localStorage : undefined,
+      storageKey: 'thrivetrack-auth-token',
+      debug: process.env.NODE_ENV === 'development'
     }
   }
 )

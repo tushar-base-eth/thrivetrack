@@ -1,23 +1,15 @@
 /**
  * Authentication Middleware
  *
- * Currently disabled to allow direct access to all pages during development.
- * Will be re-enabled later for production.
+ * Handles authentication for all routes except public ones.
  */
 
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-  // Log request info
-  console.log('Request path:', request.nextUrl.pathname)
-  console.log('Auth cookies:', request.cookies.getAll().map(c => c.name))
-
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  // Create a response object
+  let response = NextResponse.next()
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,10 +20,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // If we're on an API route, we can't set cookies
-          if (request.nextUrl.pathname.startsWith('/api')) {
-            return
-          }
+          // Always forward cookies to the response
           response.cookies.set({
             name,
             value,
@@ -39,10 +28,7 @@ export async function middleware(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
-          // If we're on an API route, we can't set cookies
-          if (request.nextUrl.pathname.startsWith('/api')) {
-            return
-          }
+          // Always forward cookies to the response
           response.cookies.set({
             name,
             value: '',
@@ -53,26 +39,46 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session if needed
-  const { data: { session }, error } = await supabase.auth.getSession()
-  console.log('Middleware auth status:', {
-    hasSession: !!session,
-    userId: session?.user?.id,
-    error
-  })
+  // Get the session from the server
+  const { data: { session } } = await supabase.auth.getSession()
+
+  // For API routes, we just ensure cookies are passed along
+  if (request.nextUrl.pathname.startsWith('/api')) {
+    // Clone the request headers and add the auth cookie for API routes
+    const requestHeaders = new Headers(request.headers)
+    if (session?.access_token) {
+      requestHeaders.set('Authorization', `Bearer ${session.access_token}`)
+    }
+    
+    // Return with the updated request headers
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  }
+
+  // For protected routes, redirect to login if not authenticated
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
+  const isPublicRoute = 
+    request.nextUrl.pathname === '/' || 
+    request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname.startsWith('/manifest.webmanifest') ||
+    request.nextUrl.pathname.startsWith('/favicon') ||
+    request.nextUrl.pathname.includes('.')
+
+  if (!session && !isAuthRoute && !isPublicRoute) {
+    return NextResponse.redirect(new URL('/auth', request.url))
+  }
+
+  // If on auth route and already logged in, redirect to dashboard
+  if (session && isAuthRoute) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
 
   return response
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
