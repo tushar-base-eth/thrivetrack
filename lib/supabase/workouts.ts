@@ -1,6 +1,8 @@
-import { supabase } from "@/utils/supabase/client"
-import type { WorkoutSet, WorkoutExercise, Workout } from "@/types/workouts"
-import type { Database } from "@/types/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Database } from "@/types/supabase"
+import { WorkoutSubmission, WorkoutSummary } from "@/lib/types/workouts"
+
+const supabase = createClientComponentClient<Database>()
 
 // Define a simpler interface for workout data that doesn't require
 // all the database fields since the stored procedure will handle that

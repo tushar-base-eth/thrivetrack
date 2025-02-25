@@ -1,7 +1,8 @@
-import { createClient } from "@/utils/supabase/server"
+import { NextRequest, NextResponse } from "next/server"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
-import { z } from "zod"
+import { type Database } from "@/types/supabase"
+import { WorkoutSubmission } from "@/lib/types/workouts"
 import { saveWorkout } from "@/lib/supabase/workouts"
 
 // Validation schema for workout data
@@ -21,10 +22,10 @@ const workoutSchema = z.object({
   created_at: z.string().datetime(),
 })
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    const supabase = createRouteHandlerClient<Database>(cookieStore)
     
     // Log cookies for debugging
     console.log('Cookies:', cookieStore.getAll())

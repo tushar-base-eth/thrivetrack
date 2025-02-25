@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { LocalExercise } from './workout-tracker'
+import { LocalExercise } from './types'
 
 interface ExerciseListProps {
   exercises: LocalExercise[]

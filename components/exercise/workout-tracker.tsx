@@ -3,38 +3,42 @@
 // TODO: Implement haptic feedback when haptics module is ready
 
 import { useState, useTransition } from "react"
-import { Plus, Save } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import { useToast } from "@/components/ui/use-toast"
-import { ExerciseList } from "./exercise-list"
+import { Input } from "@/components/ui/input"
+import { useRouter } from "next/navigation"
 import { ExerciseSelector } from "./exercise-selector"
+import { ExerciseList } from "./exercise-list"
 import { SetEditor } from "./set-editor"
-import { WorkoutWelcome } from "./workout-welcome"
-import { ExerciseSkeleton } from "@/components/loading/exercise-skeleton"
-import type { WorkoutSet } from "@/types/workouts"
-import type { Database } from "@/types/supabase"
+import { ExerciseSkeleton } from "./exercise-skeleton"
+import { format } from "date-fns"
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogFooter, AlertDialogAction } from "@/components/ui/alert-dialog"
+import { Label } from "@/components/ui/label"
+import { motion, AnimatePresence } from "framer-motion"
+import { Check, Dumbbell, Plus, Save, X } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
+import { saveWorkout } from "@/lib/supabase/workouts"
 import { supabase } from "@/utils/supabase/client"
+import { LocalExercise } from "./types"
 
 // Create a simplified version of WorkoutExercise for local use in this component
-export type LocalExercise = {
-  id?: string // Optional ID for local management
-  exercise_id?: string
-  name: string
-  sets: {
-    id?: string
-    reps: number
-    weight_kg: number
-  }[]
-  exercise?: {
-    id: string
-    name: string
-    category?: string
-    description?: string
-  }
-}
+// export type LocalExercise = {
+//   id?: string // Optional ID for local management
+//   exercise_id?: string
+//   name: string
+//   sets: {
+//     id?: string
+//     reps: number
+//     weight_kg: number
+//   }[]
+//   exercise?: {
+//     id: string
+//     name: string
+//     category?: string
+//     description?: string
+//   }
+// }
 
 export function WorkoutTracker() {
   const [exercises, setExercises] = useState<LocalExercise[]>([])
