@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,7 +8,9 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { motion } from "framer-motion"
-import { exerciseGroups } from "@/lib/exercises"
+import { fetchExercises } from "@/lib/supabase/exercises"
+import type { Exercise } from "@/types/exercises"
+import type { ExerciseGroup } from "@/lib/supabase/exercises"
 
 interface ExerciseSelectorProps {
   open: boolean
@@ -18,6 +20,8 @@ interface ExerciseSelectorProps {
   onAddExercises: () => void
 }
 
+type TabValue = "all" | "byMuscle"
+
 export function ExerciseSelector({
   open,
   onOpenChange,
@@ -26,31 +30,52 @@ export function ExerciseSelector({
   onAddExercises,
 }: ExerciseSelectorProps) {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedTab, setSelectedTab] = useState<"all" | "byMuscle">("all")
+  const [selectedTab, setSelectedTab] = useState<TabValue>("all")
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string | null>(null)
+  const [exerciseGroups, setExerciseGroups] = useState<ExerciseGroup>({})
+  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadExercises() {
+      try {
+        const data = await fetchExercises()
+        setExerciseGroups(data.grouped)
+        setExercises(data.flat)
+      } catch (error) {
+        console.error("Failed to load exercises:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (open) {
+      loadExercises()
+    }
+  }, [open])
 
   const muscleGroups = Array.from(
-    new Set(
-      Object.values(exerciseGroups)
-        .flat()
-        .map((ex) => ex.primary_muscle_group),
-    ),
+    new Set(exercises.map((ex) => ex.primary_muscle_group))
   )
 
-  const filteredExercises = Object.entries(exerciseGroups).reduce(
-    (acc, [group, exercises]) => {
-      const filtered = exercises.filter(
-        (ex) =>
-          ex.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          (selectedTab === "all" || !selectedMuscleGroup || ex.primary_muscle_group === selectedMuscleGroup),
+  const filteredExercises = selectedTab === "all" 
+    ? exercises.filter((ex: Exercise) => 
+        ex.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-      if (filtered.length > 0) {
-        acc[group] = filtered
-      }
-      return acc
-    },
-    {} as typeof exerciseGroups,
-  )
+    : Object.entries(exerciseGroups).reduce(
+        (acc, [group, exercises]) => {
+          const filtered = exercises.filter(
+            (ex) =>
+              ex.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+              (!selectedMuscleGroup || ex.primary_muscle_group === selectedMuscleGroup)
+          )
+          if (filtered.length > 0) {
+            acc[group] = filtered
+          }
+          return acc
+        },
+        {} as ExerciseGroup
+      )
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -72,8 +97,8 @@ export function ExerciseSelector({
             />
             <Tabs
               value={selectedTab}
-              onValueChange={(value: "all" | "byMuscle") => {
-                setSelectedTab(value)
+              onValueChange={(value: string) => {
+                setSelectedTab(value as TabValue)
                 setSelectedMuscleGroup(null)
               }}
               className="w-full"
@@ -91,65 +116,86 @@ export function ExerciseSelector({
 
           <ScrollArea className="flex-1">
             <div className="px-6 space-y-6 py-4">
-              {selectedTab === "byMuscle" && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {muscleGroups.map((muscle) => (
-                    <Button
-                      key={muscle}
-                      variant={selectedMuscleGroup === muscle ? "default" : "outline"}
-                      onClick={() => setSelectedMuscleGroup(selectedMuscleGroup === muscle ? null : muscle)}
-                      className="rounded-full"
-                      size="sm"
-                    >
-                      {muscle}
-                    </Button>
-                  ))}
+              {isLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <p className="text-muted-foreground">Loading exercises...</p>
                 </div>
-              )}
-
-              {Object.entries(filteredExercises).map(([group, exercises]) => (
-                <div key={group}>
-                  <h3 className="font-semibold mb-2">{group}</h3>
-                  <div className="space-y-2">
-                    {exercises.map((exercise) => (
-                      <motion.div key={exercise.id} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                        <div
-                          className="flex items-center gap-4 p-4 rounded-xl border cursor-pointer hover:bg-accent/5 transition-colors"
-                          onClick={() => onExerciseToggle(exercise.id)}
+              ) : (
+                <>
+                  {selectedTab === "byMuscle" && (
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {muscleGroups.map((muscle) => (
+                        <Button
+                          key={muscle}
+                          variant={selectedMuscleGroup === muscle ? "default" : "outline"}
+                          onClick={() => setSelectedMuscleGroup(selectedMuscleGroup === muscle ? null : muscle)}
+                          className="rounded-full"
                         >
-                          <div className="flex-1">
-                            <div>{exercise.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {exercise.primary_muscle_group}
-                              {exercise.secondary_muscle_group && `, ${exercise.secondary_muscle_group}`}
-                            </div>
-                          </div>
-                          <div
-                            className={`w-6 h-6 rounded-md border flex items-center justify-center transition-colors
-                              ${
-                                selectedExercises.includes(exercise.id)
-                                  ? "bg-[#4B7BFF] border-[#4B7BFF] text-white"
-                                  : "border-input"
-                              }`}
+                          {muscle}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedTab === "all" ? (
+                    <div className="space-y-2">
+                      {(filteredExercises as Exercise[]).map((exercise: Exercise) => (
+                        <motion.div
+                          key={exercise.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                        >
+                          <Button
+                            variant={selectedExercises.includes(exercise.id) ? "default" : "outline"}
+                            onClick={() => onExerciseToggle(exercise.id)}
+                            className="w-full justify-start font-normal"
                           >
-                            {selectedExercises.includes(exercise.id) && "✓"}
-                          </div>
+                            {exercise.name}
+                            <span className="ml-auto text-xs text-muted-foreground">
+                              {exercise.primary_muscle_group}
+                              {exercise.secondary_muscle_group && ` / ${exercise.secondary_muscle_group}`}
+                            </span>
+                          </Button>
+                        </motion.div>
+                      ))}</div>
+                  ) : (
+                    Object.entries(filteredExercises as ExerciseGroup).map(([group, exercises]) => (
+                      <div key={group}>
+                        <h3 className="font-semibold mb-3">{group}</h3>
+                        <div className="space-y-2">
+                          {exercises.map((exercise: Exercise) => (
+                            <motion.div
+                              key={exercise.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                            >
+                              <Button
+                                variant={selectedExercises.includes(exercise.id) ? "default" : "outline"}
+                                onClick={() => onExerciseToggle(exercise.id)}
+                                className="w-full justify-start font-normal"
+                              >
+                                {exercise.name}
+                                <span className="ml-auto text-xs text-muted-foreground">
+                                  {exercise.primary_muscle_group}
+                                  {exercise.secondary_muscle_group && ` / ${exercise.secondary_muscle_group}`}
+                                </span>
+                              </Button>
+                            </motion.div>
+                          ))}
                         </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                      </div>
+                    ))
+                  )}
+                </>
+              )}
             </div>
           </ScrollArea>
 
-          <div className="p-4 bg-background/80 backdrop-blur-sm border-t">
-            <Button
-              onClick={onAddExercises}
-              disabled={selectedExercises.length === 0}
-              className="w-full bg-[#4B7BFF] hover:bg-[#4B7BFF]/90 text-white rounded-xl h-12"
-            >
-              Add {selectedExercises.length} Exercise{selectedExercises.length !== 1 ? "s" : ""}
+          <div className="px-6 py-4 border-t">
+            <Button onClick={onAddExercises} className="w-full">
+              Add Selected Exercises
             </Button>
           </div>
         </div>
@@ -157,4 +203,3 @@ export function ExerciseSelector({
     </Sheet>
   )
 }
-
