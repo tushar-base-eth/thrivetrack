@@ -12,10 +12,8 @@ ThriveTrack is a simple, intuitive fitness tracking web application designed to 
 
 - Frontend UI/UX components completed with mock data
 - ✅ Step 1: Supabase Setup and Database Configuration completed
-- 🚧 Step 2: Authentication Implementation in progress
-- ⏳ Step 3: Workout Logging and API Integration not started
-- ⏳ Step 4: UI/UX Improvements not started
-- ⏳ Step 5: Testing and Deployment not started
+- ✅ Step 2: Authentication Implementation completed
+- Ready to proceed with Step 3: Workout Logging and API Integration
 
 ## Implementation Progress
 
@@ -116,7 +114,7 @@ ThriveTrack is a simple, intuitive fitness tracking web application designed to 
 4. Implement form validations with Zod
 5. Add proper error handling and loading states
 
-### Step 2: Authentication (In Progress 🚧)
+### Step 2: Authentication (Completed)
 
 #### Authentication Implementation
 
@@ -324,32 +322,225 @@ ThriveTrack is a simple, intuitive fitness tracking web application designed to 
 4. Implement proper error handling
 5. Add loading states for data operations
 
-### Current Issues and Tasks
+### Step 3: Workout Logging and API Integration (In Progress)
 
-### Authentication (Step 2)
-1. Sign in flow not working properly
-   - Need to fix form submission
-   - Add proper error handling
-   - Add loading states
+#### Understanding & Approach
 
-2. Sign up flow issues
-   - User profile not being created in users table
-   - Need to handle email verification
-   - Add Google authentication
-   - Add proper form validation
+1. **Workout Logging Requirements**
+   - User can log workouts with exercises and sets
+   - User can view workout history
+   - User can edit workout logs
 
-3. Missing Features
-   - Password reset flow
-   - Email verification
-   - OAuth providers (Google)
-   - Protected routes middleware
+2. **API Endpoints**
+   - Create workout logs
+   - Retrieve workout logs
+   - Update workout logs
+   - Delete workout logs
 
-### Next Steps
-1. Fix auth flow issues
-2. Add OAuth providers
-3. Add proper form validation
-4. Implement protected routes
-5. Add user profile management
+3. **Implementation Components**
+   - Workout logging form
+   - Workout history page
+   - API routes for workout data
+   - Type-safe API hooks and contexts
+
+#### Implementation Steps
+
+1. [ ] Create workout logging form
+2. [ ] Implement workout history page
+3. [ ] Create API routes for workout data
+4. [ ] Implement type-safe API hooks and contexts
+5. [ ] Add form validation with Zod
+6. [ ] Implement proper error handling
+7. [ ] Add loading states for data operations
+
+#### Key Decisions & Rationale
+
+1. **Workout Logging**
+   - ✅ User can log workouts with exercises and sets
+     - Rationale: Essential feature for workout tracking
+   - ✅ User can view workout history
+     - Rationale: Essential feature for workout tracking
+   - ✅ User can edit workout logs
+     - Rationale: Useful feature for correcting mistakes
+
+2. **API Endpoints**
+   - ✅ Create workout logs
+     - Rationale: Essential endpoint for workout logging
+   - ✅ Retrieve workout logs
+     - Rationale: Essential endpoint for workout history
+   - ✅ Update workout logs
+     - Rationale: Useful endpoint for editing workout logs
+   - ✅ Delete workout logs
+     - Rationale: Useful endpoint for deleting workout logs
+
+3. **Implementation Priorities**
+   1. Workout logging form
+   2. Workout history page
+   3. API routes for workout data
+   4. Type-safe API hooks and contexts
+   5. Form validation with Zod
+   6. Error handling
+   7. Loading states
+
+#### API Strategy and Architecture
+
+1. **Client-Side APIs (Supabase JS)**
+   - Rationale: Direct database access for real-time, low-latency operations
+   - Implementation:
+     ```typescript
+     // Authentication
+     - signInWithPassword: User login
+     - signUp: User registration
+     - signInWithOAuth: Google authentication
+     - resetPasswordForEmail: Password reset flow
+     
+     // Real-time Data
+     - from("Available_Exercises").select(): Exercise library access
+     - from("Users").select(): Profile data
+     ```
+
+2. **Server-Side APIs (Next.js API Routes)**
+   - Rationale: Secure, validated operations with complex business logic
+   - Implementation:
+     ```typescript
+     // Workout Management
+     POST /api/v1/workouts   // Create workout
+     GET /api/v1/workouts    // Fetch history
+     DELETE /api/v1/workouts // Remove workout
+     
+     // Exercise Management
+     GET /api/v1/exercises   // Fetch with filters
+     
+     // Profile Management
+     PATCH /api/v1/users     // Update profile
+     ```
+
+3. **Server-Side Rendering**
+   - Rationale: SEO, performance, and secure data aggregation
+   - Implementation:
+     ```typescript
+     // Dashboard Data
+     - from("Users").select() in getServerSideProps
+     - rpc("get_volume_by_day") in getServerSideProps
+     ```
+
+4. **Middleware Security**
+   - Rationale: Consistent auth checks and rate limiting
+   - Implementation:
+     ```typescript
+     // Session Validation
+     - auth.getSession() in middleware
+     - Protected route patterns
+     ```
+
+#### API Design Principles
+
+1. **Client-Side Operations**
+   - Used for:
+     - Real-time interactions
+     - Simple CRUD operations
+     - User authentication
+     - Exercise library access
+   - Benefits:
+     - Lower latency
+     - Reduced server load
+     - Better user experience
+
+2. **Server-Side Operations**
+   - Used for:
+     - Complex business logic
+     - Data aggregation
+     - Sensitive operations
+     - Heavy computations
+   - Benefits:
+     - Enhanced security
+     - Reduced client load
+     - Better error handling
+
+3. **Data Flow**
+   - Client → Supabase: Direct for real-time
+   - Client → Next.js → Supabase: For complex operations
+   - SSR → Supabase: For initial page loads
+
+4. **Security Measures**
+   - Row Level Security (RLS)
+   - API rate limiting
+   - Request validation
+   - Error handling
+
+#### API Documentation
+
+1. **Authentication APIs**
+   ```typescript
+   // Login
+   const { data, error } = await supabase.auth.signInWithPassword({
+     email: string,
+     password: string
+   })
+
+   // Signup
+   const { data, error } = await supabase.auth.signUp({
+     email: string,
+     password: string,
+     options: {
+       data: UserProfile
+     }
+   })
+
+   // Google OAuth
+   const { data, error } = await supabase.auth.signInWithOAuth({
+     provider: 'google'
+   })
+   ```
+
+2. **Workout APIs**
+   ```typescript
+   // Create Workout
+   POST /api/v1/workouts
+   Body: {
+     exercises: Exercise[]
+     sets: Set[]
+     notes?: string
+   }
+
+   // Get Workouts
+   GET /api/v1/workouts
+   Query: {
+     from?: Date
+     to?: Date
+     limit?: number
+   }
+   ```
+
+3. **Profile APIs**
+   ```typescript
+   // Update Profile
+   PATCH /api/v1/users
+   Body: Partial<UserProfile>
+
+   // Get Profile
+   const { data, error } = await supabase
+     .from('Users')
+     .select()
+     .single()
+   ```
+
+#### Testing Strategy
+
+1. **Client-Side Testing**
+   - Unit tests for auth flows
+   - Integration tests for real-time operations
+   - Mock Supabase client responses
+
+2. **Server-Side Testing**
+   - API route testing with supertest
+   - Database operation validation
+   - Error handling verification
+
+3. **End-to-End Testing**
+   - Complete user flows
+   - Cross-browser compatibility
+   - Mobile responsiveness
 
 ## Tech Stack
 
