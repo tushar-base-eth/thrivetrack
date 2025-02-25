@@ -12,7 +12,7 @@ ThriveTrack is a simple, intuitive fitness tracking web application designed to 
 
 - Frontend UI/UX components completed with mock data
 - ✅ Step 1: Supabase Setup and Database Configuration completed
-- ✅ Step 2: Authentication Implementation completed
+- 🚧 Step 2: Authentication Implementation in progress
 - Ready to proceed with Step 3: Workout Logging and API Integration
 
 ## Implementation Progress
@@ -114,213 +114,142 @@ ThriveTrack is a simple, intuitive fitness tracking web application designed to 
 4. Implement form validations with Zod
 5. Add proper error handling and loading states
 
-### Step 2: Authentication (Completed ✅)
+### Step 2: Authentication (In Progress 🚧)
 
-#### Authentication Implementation
+#### Current Implementation
+1. **Auth Context** (`contexts/auth-context.tsx`)
+   - Uses Supabase Auth for authentication
+   - Manages user state and profile data
+   - Handles signup, signin, and signout
+   - Creates user profile in `users` table on signup
 
-1. **Client-Side Auth Flow (Supabase JS)**
-   ```typescript
-   // Login
-   const { data, error } = await supabase.auth.signInWithPassword({
-     email: string,
-     password: string
-   })
+2. **Database Schema** (`lib/supabase/schema.sql`)
+   - `users` table for user profiles
+   - Stores user preferences and stats
+   - Links to Supabase Auth via user ID
+   - Uses lowercase table names
 
-   // Signup (Two-Step Process)
-   // Step 1: Create auth user
-   const { data, error } = await supabase.auth.signUp({
-     email: string,
-     password: string,
-     options: {
-       emailRedirectTo: string
-     }
-   })
-   
-   // Step 2: Create user profile
-   const { error } = await supabase.from("Users").insert({
-     id: data.user.id,
-     email: string,
-     // ... other profile fields
-   })
+3. **Form Validation** (`lib/validations/auth.ts`)
+   - Uses Zod for form validation
+   - Validates signup and login data
+   - Includes field-level validation rules
+   - Type-safe with TypeScript
 
-   // Google OAuth
-   const { data, error } = await supabase.auth.signInWithOAuth({
-     provider: "google",
-     options: {
-       redirectTo: string,
-       queryParams: {
-         access_type: "offline",
-         prompt: "consent"
-       }
-     }
-   })
+4. **Auth Forms** (`app/auth/page.tsx`)
+   - Unified login/signup form
+   - Form state management with react-hook-form
+   - Error handling and loading states
+   - Responsive design with shadcn/ui
 
-   // Password Reset
-   const { data, error } = await supabase.auth.resetPasswordForEmail(
-     email,
-     { redirectTo: string }
-   )
-   ```
+#### Progress
+- [x] Basic Supabase Auth setup
+- [x] Auth context implementation
+- [x] Basic signup/login forms
+- [x] Form validation with Zod
+- [x] User profile creation
+- [ ] Auth flow testing and fixes
+- [ ] Social auth (Google)
+- [ ] Protected routes
+- [ ] Email verification
+- [ ] Password reset
+- [ ] Profile setup
 
-2. **Auth Features**
-   - Email/Password Authentication
-   - Google OAuth Integration
-   - Password Reset Flow
-   - Email Verification
-   - Session Management
+#### Known Issues
+1. **Auth Flow** 🐛
+   - Signup flow not redirecting properly
+   - Auth state not persisting between refreshes
+   - Loading states not showing correctly
+   - Error messages need improvement
 
-3. **Security Measures**
-   - Client-side validation using Zod
-   - Rate limiting on auth endpoints
-   - Secure password requirements
-   - Protected routes via middleware
-   - HTTPOnly session cookies
+2. **Missing Features** 📝
+   - Google authentication not implemented
+   - Protected routes not set up
+   - Email verification flow incomplete
+   - Password reset not implemented
+   - Profile setup flow missing
 
-4. **Error Handling**
-   - Proper error messages for each failure case
-   - Automatic retry for transient errors
-   - Graceful fallback for network issues
-   - Clear user feedback
+3. **Form Improvements** 🔄
+   - Better validation feedback needed
+   - Loading states need work
+   - Error messages not clear enough
+   - Form field types need refinement
 
-5. **Session Management**
-   - Automatic session refresh
-   - Secure session storage
-   - Single active session policy
-   - Proper logout handling
+#### Next Steps
+1. **Critical Fixes**
+   - Fix signup flow and redirection
+   - Implement proper loading states
+   - Add clear error messages
+   - Fix auth state persistence
 
-6. **Profile Management**
-   - Automatic profile creation on signup
-   - Profile data validation
-   - Unit preference handling
-   - Theme preference support
+2. **Feature Implementation**
+   - Add Google authentication
+   - Set up protected routes with middleware
+   - Implement email verification
+   - Add password reset functionality
+   - Create profile setup flow
 
-#### Implementation Summary
+3. **Form Improvements**
+   - Enhance validation feedback
+   - Add proper loading indicators
+   - Improve error messages
+   - Refine form field types
 
-1. **Authentication Components**
-   - ✅ Email/password authentication with validation
-   - ✅ Google OAuth integration
-   - ✅ Email verification flow with 24-hour expiry
-   - ✅ Session management with 7-day expiry
-   - ✅ Protected route middleware
-   - ✅ Type-safe auth hooks and context
+#### Technical Details
+1. **Auth Context**
+```typescript
+// Key functions in auth-context.tsx
+const signUp = async (data: SignUpData) => {
+  // Creates auth user
+  // Creates user profile
+  // Signs in user
+  // Redirects to dashboard
+}
 
-2. **Security Features**
-   - ✅ HTTPOnly cookies for session storage
-   - ✅ IP-based rate limiting
-   - ✅ Single active session per user
-   - ✅ Mandatory email verification
-   - ✅ Industry-standard password requirements
-   - ✅ Database-level rate limiting
+const signIn = async (email: string, password: string) => {
+  // Signs in user
+  // Redirects to dashboard
+}
 
-3. **UI/UX Decisions**
-   - Using shadcn/ui for consistent, accessible components
-   - Lucide icons for clean, modern iconography
-   - No direct Radix UI dependencies (included via shadcn/ui)
-   - Framer Motion for smooth animations
-   - Dark mode support via next-themes
-   - Mobile-first responsive design
+const signOut = async () => {
+  // Signs out user
+  // Clears state
+  // Redirects to home
+}
+```
 
-4. **Files Created/Modified**
-   - `contexts/auth-context.tsx`: Supabase auth integration
-   - `app/auth/page.tsx`: Auth forms and Google OAuth
-   - `app/auth/verify/page.tsx`: Email verification page
-   - `app/auth/callback/route.ts`: OAuth callback handler
-   - `middleware.ts`: Route protection and redirects
-   - `scripts/rate-limiting.sql`: Database rate limiting
-   - `scripts/test-auth.ts`: Auth configuration tests
-   - `scripts/test-oauth.ts`: OAuth configuration tests
+2. **Database Schema**
+```sql
+-- users table schema
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  gender TEXT CHECK (gender IN ('Male', 'Female', 'Other')),
+  date_of_birth DATE NOT NULL,
+  weight_kg FLOAT NOT NULL,
+  height_cm FLOAT NOT NULL,
+  body_fat_percentage FLOAT,
+  unit_preference TEXT DEFAULT 'metric',
+  theme_preference TEXT DEFAULT 'light',
+  total_volume NUMERIC DEFAULT 0,
+  total_workouts INTEGER DEFAULT 0
+);
+```
 
-#### Key Implementation Details
-
-1. **Authentication Flow**
-   - Sign up requires email verification
-   - Login redirects to home page
-   - Google OAuth uses popup flow
-   - Protected routes redirect to auth page
-
-2. **Session Management**
-   - 7-day session duration
-   - Single active session
-   - Auto-logout on session expiry
-   - Session persistence across refreshes
-
-3. **Rate Limiting Rules**
-   - Sign in: 5 attempts per 15 minutes
-   - Password reset: 3 attempts per email per hour
-   - Email verification resend: 3 attempts per email per hour
-   - API requests: 100 per IP per minute
-   - Database-level rate limiting for additional security
-
-#### Challenges & Solutions
-
-1. **Session Handling**
-   - Challenge: Managing session state across pages
-   - Solution: Implemented Supabase's SSR helpers with proper cookie management
-
-2. **Route Protection**
-   - Challenge: Protecting routes while allowing auth callbacks
-   - Solution: Created middleware with specific matchers and exclusions
-
-3. **Type Safety**
-   - Challenge: Maintaining type safety with auth state
-   - Solution: Created comprehensive types for user profiles and auth state
-
-4. **Rate Limiting**
-   - Challenge: Implementing multi-layer rate limiting
-   - Solution: Combined Supabase Auth rate limits with custom database rate limiting
-
-5. **Configuration Management**
-   - Challenge: Automating Supabase configuration
-   - Solution: Created SQL scripts and documentation for repeatable setup
-
-#### Testing Completed
-- ✅ Email signup and verification
-- ✅ Password-based login
-- ✅ Google OAuth flow
-- ✅ Session persistence
-- ✅ Protected route access
-- ✅ Rate limiting functionality
-- ✅ Error handling scenarios
-- ✅ Password policy enforcement
-
-#### Key Learnings & Best Practices
-
-1. **Security First**
-   - Implemented multiple layers of rate limiting
-   - Used HTTPOnly cookies for session storage
-   - Enforced strong password policies
-   - Required email verification
-
-2. **User Experience**
-   - Clear error messages for password requirements
-   - Smooth OAuth integration
-   - Proper loading states
-   - Intuitive email verification flow
-
-3. **Code Organization**
-   - Separated concerns in different files
-   - Created reusable auth hooks
-   - Maintained type safety throughout
-   - Added comprehensive tests
-
-4. **Documentation**
-   - Documented all configuration steps
-   - Created test scripts for verification
-   - Maintained clear status updates
-   - Recorded challenges and solutions
-
-5. **UI Component Strategy**
-   - Using shadcn/ui for pre-built, accessible components
-   - Avoiding direct Radix UI dependencies
-   - Consistent component styling and behavior
-   - Mobile-first responsive design
-
-#### Next Steps (Step 3)
-1. Implement workout logging functionality
-2. Create API routes for exercise data
-3. Add form validation with Zod
-4. Implement proper error handling
-5. Add loading states for data operations
+3. **Form Validation**
+```typescript
+// Key validation rules
+const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  name: z.string().min(1),
+  gender: z.enum(["Male", "Female", "Other"]),
+  date_of_birth: z.string(),
+  weight_kg: z.number().min(20).max(300),
+  height_cm: z.number().min(100).max(300),
+  // ...other fields
+});
+```
 
 ### Step 3: Workout Logging and API Integration (In Progress)
 
@@ -631,11 +560,11 @@ ThriveTrack/
 - [x] Configure environment variables
 
 ## Step 2: Authentication Flow 
-- [x] Set up Supabase Auth
-- [x] Create auth context
-- [x] Implement basic signup/login forms
-- [x] Add form validation with zod
-- [x] Create user profile on signup
+- [ ] Set up Supabase Auth
+- [ ] Create auth context
+- [ ] Implement basic signup/login forms
+- [ ] Add form validation with zod
+- [ ] Create user profile on signup
 - [ ] Fix auth flow issues:
   - [ ] Sign in with Google not implemented
   - [ ] Auth state not persisting correctly
@@ -658,16 +587,103 @@ ThriveTrack/
 8. Fixed build issues with validation schema
 
 ### Known Issues:
-1. Auth flow not working correctly after signup
-2. Sign in with Google button missing
-3. Loading states not showing properly
-4. Error messages need improvement
-5. Form validation could be better
-6. Protected routes not implemented
-7. Email verification flow incomplete
-8. Password reset flow not implemented
+1. **Auth Flow** 🐛
+   - Signup flow not redirecting properly
+   - Auth state not persisting between refreshes
+   - Loading states not showing correctly
+   - Error messages need improvement
 
-## Step 3: Dashboard Implementation 
+2. **Missing Features** 📝
+   - Google authentication not implemented
+   - Protected routes not set up
+   - Email verification flow incomplete
+   - Password reset not implemented
+   - Profile setup flow missing
+
+3. **Form Improvements** 🔄
+   - Better validation feedback needed
+   - Loading states need work
+   - Error messages not clear enough
+   - Form field types need refinement
+
+### Next Steps
+1. **Critical Fixes**
+   - Fix signup flow and redirection
+   - Implement proper loading states
+   - Add clear error messages
+   - Fix auth state persistence
+
+2. **Feature Implementation**
+   - Add Google authentication
+   - Set up protected routes with middleware
+   - Implement email verification
+   - Add password reset functionality
+   - Create profile setup flow
+
+3. **Form Improvements**
+   - Enhance validation feedback
+   - Add proper loading indicators
+   - Improve error messages
+   - Refine form field types
+
+### Technical Details
+1. **Auth Context**
+```typescript
+// Key functions in auth-context.tsx
+const signUp = async (data: SignUpData) => {
+  // Creates auth user
+  // Creates user profile
+  // Signs in user
+  // Redirects to dashboard
+}
+
+const signIn = async (email: string, password: string) => {
+  // Signs in user
+  // Redirects to dashboard
+}
+
+const signOut = async () => {
+  // Signs out user
+  // Clears state
+  // Redirects to home
+}
+```
+
+2. **Database Schema**
+```sql
+-- users table schema
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  gender TEXT CHECK (gender IN ('Male', 'Female', 'Other')),
+  date_of_birth DATE NOT NULL,
+  weight_kg FLOAT NOT NULL,
+  height_cm FLOAT NOT NULL,
+  body_fat_percentage FLOAT,
+  unit_preference TEXT DEFAULT 'metric',
+  theme_preference TEXT DEFAULT 'light',
+  total_volume NUMERIC DEFAULT 0,
+  total_workouts INTEGER DEFAULT 0
+);
+```
+
+3. **Form Validation**
+```typescript
+// Key validation rules
+const signupSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  name: z.string().min(1),
+  gender: z.enum(["Male", "Female", "Other"]),
+  date_of_birth: z.string(),
+  weight_kg: z.number().min(20).max(300),
+  height_cm: z.number().min(100).max(300),
+  // ...other fields
+});
+```
+
+## Step 3: Dashboard Implementation ⏳
 - [ ] Create dashboard layout
 - [ ] Add workout tracking functionality
 - [ ] Implement exercise database
@@ -675,7 +691,7 @@ ThriveTrack/
 - [ ] Create workout history view
 - [ ] Add profile settings
 
-## Step 4: Exercise and Workout Features 
+## Step 4: Exercise and Workout Features ⏳
 - [ ] Add exercise library
 - [ ] Create workout templates
 - [ ] Add workout logging
@@ -683,7 +699,7 @@ ThriveTrack/
 - [ ] Add progress photos
 - [ ] Create workout sharing
 
-## Step 5: Analytics and Progress Tracking 
+## Step 5: Analytics and Progress Tracking ⏳
 - [ ] Add weight tracking
 - [ ] Implement progress charts
 - [ ] Add personal records tracking
