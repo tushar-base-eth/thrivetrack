@@ -24,9 +24,4 @@ export type LocalExercise = {
 };
 
 // Exercise selector types - aligned with available_exercises table
-export type ExerciseSelection = {
-  id: string;
-  name: string;
-  primary_muscle_group: string;
-  secondary_muscle_group?: string | null;
-};
+export type ExerciseSelection = Database['public']['Tables']['available_exercises']['Row'];

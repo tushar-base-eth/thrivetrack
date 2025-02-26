@@ -4,15 +4,11 @@ export interface ExerciseGroup {
   [key: string]: ExerciseSelection[]
 }
 
-export async function fetchExercises(): Promise<{ grouped: ExerciseGroup; flat: ExerciseSelection[] }> {
-  const response = await fetch("/api/v1/available_exercises", {
-    credentials: "include"
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => null)
-    throw new Error(error?.error || "Failed to fetch exercises")
-  }
-
-  return response.json()
+export async function fetchExercises() {
+  const response = await fetch("/api/v1/available_exercises")
+  if (!response.ok) throw new Error("Failed to fetch exercises")
+  return response.json() as Promise<{
+    grouped: Record<string, ExerciseSelection[]>
+    flat: ExerciseSelection[]
+  }>
 }
